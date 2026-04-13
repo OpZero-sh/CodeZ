@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ring" x1="96" x2="416" y1="96" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00F5FF" />
+      <stop offset="1" stop-color="#8B5CF6" />
+    </linearGradient>
+    <linearGradient id="glyph" x1="160" x2="352" y1="160" y2="352" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C9FBFF" />
+      <stop offset="1" stop-color="#C4B5FD" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#030308" />
+  <rect x="24" y="24" width="464" height="464" rx="88" fill="none" stroke="#12121A" stroke-width="8" />
+  <circle cx="256" cy="256" r="154" fill="none" stroke="url(#ring)" stroke-width="40" />
+  <path
+    fill="url(#glyph)"
+    d="M333.8 179.3c-12.6-10.1-28.7-15.1-48.3-15.1h-81.1c-12.7 0-23 10.3-23 23V325c0 12.7 10.3 23 23 23h81.1c19.6 0 35.7-5 48.3-15.1 24.5-19.5 36.7-42.6 36.7-69.4s-12.2-49.8-36.7-69.2Zm-39.1 115.5c-4.8 4.2-11.4 6.3-19.8 6.3h-43.5V211h43.5c8.4 0 15 2.1 19.8 6.3 9.5 8.2 14.3 19.7 14.3 34.4 0 14.8-4.8 29.2-14.3 43.1Z"
+  />
+</svg>

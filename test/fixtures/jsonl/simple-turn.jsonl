@@ -1,0 +1,3 @@
+{"type":"user","message":{"role":"user","content":"What is 2+2?"},"session_id":"jsonl-test-001","timestamp":"2025-06-15T10:00:00.000Z","cwd":"/tmp/test","version":"1.0.0"}
+{"type":"assistant","message":{"id":"msg-assist-001","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"2 + 2 equals 4."}]},"session_id":"jsonl-test-001","timestamp":"2025-06-15T10:00:01.000Z"}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":500,"num_turns":1,"result":"Answered: 2+2=4","session_id":"jsonl-test-001"}

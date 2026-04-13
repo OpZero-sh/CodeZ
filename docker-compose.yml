@@ -1,0 +1,16 @@
+services:
+  codezero:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4097:4097"
+    volumes:
+      - ~/.config/opzero-claude:/root/.config/opzero-claude
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4097/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

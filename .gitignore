@@ -1,0 +1,10 @@
+node_modules/
+web/dist/
+.dogfood/
+.agent-log/
+.logs/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example

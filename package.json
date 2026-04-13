@@ -1,0 +1,26 @@
+{
+  "name": "opzero-claude",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "codezero": "./bin/cli.ts"
+  },
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"bun run dev:server\" \"bun run dev:web\"",
+    "dev:server": "bun run --watch server/index.ts",
+    "dev:web": "cd web && bun run dev",
+    "build": "cd web && bun run build",
+    "start": "bun run server/index.ts",
+    "setup": "bun install && cd web && bun install && cd .. && bun run build && bash scripts/init.sh",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "concurrently": "^9.1.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}

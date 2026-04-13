@@ -1,0 +1,5 @@
+{"type":"user","message":{"role":"user","content":"List files in /tmp"},"session_id":"jsonl-test-002","timestamp":"2025-06-15T11:00:00.000Z","cwd":"/tmp","version":"1.0.0"}
+{"type":"assistant","message":{"id":"msg-assist-002","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","id":"tool-001","name":"Bash","input":{"command":"ls /tmp"}}]},"session_id":"jsonl-test-002","timestamp":"2025-06-15T11:00:01.000Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-001","content":"file1.txt\nfile2.txt"}]},"session_id":"jsonl-test-002","timestamp":"2025-06-15T11:00:02.000Z"}
+{"type":"assistant","message":{"id":"msg-assist-003","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Found 2 files: file1.txt and file2.txt"}]},"session_id":"jsonl-test-002","timestamp":"2025-06-15T11:00:03.000Z"}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"num_turns":2,"result":"Listed files","session_id":"jsonl-test-002"}
