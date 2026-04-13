@@ -27,7 +27,7 @@ const DEFAULT_PORT = 4097;
 
 function configPath(): string {
   const home = process.env.HOME ?? homedir();
-  const envPath = process.env.CODEZERO_CONFIG_PATH;
+  const envPath = process.env.CODEZ_CONFIG_PATH;
   if (envPath) return envPath;
   return join(home, ".config", "opzero-claude", "config.json");
 }
@@ -61,8 +61,8 @@ async function buildFirstRunConfig(): Promise<FirstRunMaterial> {
   return {
     plainPassword,
     config: {
-      host: process.env.CODEZERO_HOST ?? DEFAULT_HOST,
-      port: process.env.CODEZERO_PORT ? parseInt(process.env.CODEZERO_PORT, 10) : DEFAULT_PORT,
+      host: process.env.CODEZ_HOST ?? DEFAULT_HOST,
+      port: process.env.CODEZ_PORT ? parseInt(process.env.CODEZ_PORT, 10) : DEFAULT_PORT,
       auth: {
         username: `opz-${randomHex(3)}`,
         password: `bcrypt:${hashed}`,
@@ -83,7 +83,7 @@ function printCredentialsBanner(
     [
       "",
       line,
-      "  CodeZero: first run — generated credentials",
+      "  CodeZ: first run — generated credentials",
       line,
       `  config:   ${path}`,
       `  username: ${config.auth.username}`,
@@ -111,8 +111,8 @@ export async function loadConfig(): Promise<Config> {
     }
 
     const config: Config = {
-      host: process.env.CODEZERO_HOST ?? raw.host ?? DEFAULT_HOST,
-      port: process.env.CODEZERO_PORT ? parseInt(process.env.CODEZERO_PORT, 10) : raw.port ?? DEFAULT_PORT,
+      host: process.env.CODEZ_HOST ?? raw.host ?? DEFAULT_HOST,
+      port: process.env.CODEZ_PORT ? parseInt(process.env.CODEZ_PORT, 10) : raw.port ?? DEFAULT_PORT,
       auth: {
         username: raw.auth?.username ?? `opz-${randomHex(3)}`,
         password: raw.auth?.password ?? randomPassword(24),

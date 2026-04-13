@@ -1,6 +1,6 @@
-# CodeZero — Project Guide
+# CodeZ — Project Guide
 
-Product name: **CodeZero**. Package / repo / on-disk name: `opzero-claude`
+Product name: **CodeZ**. Package / repo / on-disk name: `opzero-claude`
 (unchanged to avoid breaking things — only the UI-visible brand changes).
 
 A web UI for driving Claude Code sessions remotely. Single Bun HTTP server
@@ -49,7 +49,7 @@ Every real-time state change flows through the EventBus as a typed
 `SSEEvent`. The SPA subscribes once to `/api/events` and dispatches events
 into an immutable client store backed by `useSyncExternalStore`.
 
-External agents can also control CodeZero programmatically via the remote
+External agents can also control CodeZ programmatically via the remote
 MCP server at `packages/codezero-mcp/`:
 
 ```
@@ -58,11 +58,11 @@ MCP server at `packages/codezero-mcp/`:
        |  MCP Streamable HTTP (POST/GET/DELETE)
        |  http://127.0.0.1:4098/mcp
        v
-  codezero-mcp (Bun HTTP server, packages/codezero-mcp/index.ts)
+  codez-mcp (Bun HTTP server, packages/codezero-mcp/index.ts)
        |
        |  HTTP REST (loopback bypass, no auth)
        v
-  CodeZero Bun server (127.0.0.1:4097)
+  CodeZ Bun server (127.0.0.1:4097)
 ```
 
 ## Quick commands
@@ -199,7 +199,7 @@ opzero-claude/
   packages/
     opzero-channel/       MCP plugin loaded by terminal `claude` for bidirectional
                           channel relay. Stdio transport, loopback HTTP bridge.
-    codezero-mcp/         Remote MCP server giving agents full control over CodeZero.
+    codezero-mcp/         Remote MCP server giving agents full control over CodeZ.
       index.ts              Bun.serve entry on :4098, WebStandardStreamableHTTPServerTransport
       client.ts             HTTP client wrapping all /api/* endpoints on :4097
       tools.ts              17 MCP tool definitions + dispatch handler
@@ -619,7 +619,7 @@ See `Roadmap.md` for full list with tiering. Key remaining items:
 - **Cross-session team dashboard** — needs `task.started`/`task.finished` events.
 - **Paste-image / file-reference** — clipboard paste + multipart content blocks.
 - **Markers** — bookmark system for in-session flagging.
-- **CodeZero memory** — persistent state store for preferences, markers, cost
+- **CodeZ memory** — persistent state store for preferences, markers, cost
   snapshots; enables items 14, 10, and personalization.
 - **iMessage relay** — depends on Channels E2E verification.
 - **Session tree by repo name** — group sidebar by git remote instead of slug.
@@ -636,7 +636,7 @@ See `Roadmap.md` for full list with tiering. Key remaining items:
 - **Command palette** — Cmd+K shipped.
 - **Cloudflare Access** — provider shipped; user config required.
 - **Auto-memory** — read-only memory viewer shipped.
-- **.claude/agents/codezero.md** — shipped (item 19).
+- **.claude/agents/codez.md** — shipped (item 19).
 - **Remote MCP server** — `packages/codezero-mcp/` shipped. 17 tools over
   Streamable HTTP at `:4098`. Agents connect via
   `{"type":"http","url":"http://127.0.0.1:4098/mcp"}`.

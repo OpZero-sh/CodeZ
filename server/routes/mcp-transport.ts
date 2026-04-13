@@ -1,15 +1,15 @@
 /**
  * MCP Streamable HTTP transport route.
  *
- * Mounts at /mcp on the main CodeZero server so agents reach it via
+ * Mounts at /mcp on the main CodeZ server so agents reach it via
  * the Cloudflare tunnel (e.g. codez.yourdomain.com/mcp).
- * Auth is handled here via AuthKit OAuth tokens — CodeZero's cookie
+ * Auth is handled here via AuthKit OAuth tokens — CodeZ's cookie
  * auth is bypassed for these paths (see auth.ts isPublicPath).
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { CodeZeroClient } from "../../packages/codezero-mcp/client.ts";
+import { CodeZClient } from "../../packages/codezero-mcp/client.ts";
 import { EventPoller } from "../../packages/codezero-mcp/events.ts";
 import { registerTools, type ToolCallEvent } from "../../packages/codezero-mcp/tools.ts";
 import type { EventBus } from "../bus";
@@ -69,15 +69,15 @@ async function authenticateRequest(
 
 const transports = new Map<string, WebStandardStreamableHTTPServerTransport>();
 
-// CodeZeroClient talks to ourselves on loopback — avoids coupling MCP
+// CodeZClient talks to ourselves on loopback — avoids coupling MCP
 // tools directly to server internals.
-const client = new CodeZeroClient();
+const client = new CodeZClient();
 const poller = new EventPoller();
 poller.connect();
 
 function createMcpServer(clientId: string): Server {
   const server = new Server(
-    { name: "codezero-mcp", version: "0.1.0" },
+    { name: "codez-mcp", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
   registerTools(server, client, poller, (event: ToolCallEvent) => {
@@ -108,7 +108,7 @@ function createMcpServer(clientId: string): Server {
 
 export function mcpPrmRoute(req: Request): Response {
   // Cloudflare tunnel forwards plain HTTP; use X-Forwarded-Proto to reconstruct the public origin
-  let serverUrl = process.env.CODEZERO_MCP_URL;
+  let serverUrl = process.env.CODEZ_MCP_URL;
   if (!serverUrl) {
     const url = new URL(req.url);
     const proto = req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");

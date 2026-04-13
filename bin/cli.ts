@@ -22,7 +22,7 @@ async function main() {
     const pkg = JSON.parse(await Bun.file("package.json").text());
     console.log(pkg.version ?? "0.0.0");
   } else if (!cmd) {
-    console.log("Usage: codezero <command>");
+    console.log("Usage: codez <command>");
     console.log("");
     console.log("Commands:");
     console.log("  serve, start   Run the server");

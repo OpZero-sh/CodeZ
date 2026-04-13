@@ -3,7 +3,7 @@
   "private": false,
   "type": "module",
   "bin": {
-    "codezero": "./bin/cli.ts"
+    "codez": "./bin/cli.ts"
   },
   "scripts": {
     "dev": "concurrently -n server,web -c cyan,magenta \"bun run dev:server\" \"bun run dev:web\"",

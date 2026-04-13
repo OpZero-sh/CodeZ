@@ -1,6 +1,6 @@
-# CodeZero Architecture
+# CodeZ Architecture
 
-![CodeZero full architecture](codezero-architecture.svg)
+![CodeZ full architecture](codez-architecture.svg)
 
 ```
                                     INTERNET
@@ -74,7 +74,7 @@
     │   │                                                     │     │
     │   │  WebStandardStreamableHTTPServerTransport           │     │
     │   │  ┌───────────────────────────────────────────┐      │     │
-    │   │  │ 17 Tools (via CodeZeroClient → /api/*)    │      │     │
+    │   │  │ 17 Tools (via CodeZClient → /api/*)      │      │     │
     │   │  │                                           │      │     │
     │   │  │ list_projects    get_session              │      │     │
     │   │  │ list_sessions    create_session            │      │     │
@@ -215,7 +215,7 @@
          │
          │  dispatch("create_session", {slug, cwd})
          ▼
-    CodeZeroClient.createSession()
+    CodeZClient.createSession()
          │
          │  POST http://127.0.0.1:4097/api/projects/:slug/sessions
          │  (loopback — auth bypassed)

@@ -1,8 +1,8 @@
-# CodeZero
+# CodeZ
 
 Self-hosted web UI for Claude Code. Drive AI-assisted development sessions from your phone, tablet, or any browser — no API key required.
 
-CodeZero wraps the official [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) using its supported `stream-json` duplex interface. It does not hijack credentials, inject prompts through unofficial channels, or require an Anthropic API key. Users authenticate with their existing Claude Max (or Team/Enterprise) subscription via OAuth, fully compliant with [Anthropic's Terms of Service](https://www.anthropic.com/policies/terms-of-service).
+CodeZ wraps the official [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) using its supported `stream-json` duplex interface. It does not hijack credentials, inject prompts through unofficial channels, or require an Anthropic API key. Users authenticate with their existing Claude Max (or Team/Enterprise) subscription via OAuth, fully compliant with [Anthropic's Terms of Service](https://www.anthropic.com/policies/terms-of-service).
 
 Built by [OpZero](https://opzero.sh). Part of the OpZero open-source ecosystem.
 
@@ -41,7 +41,7 @@ Built by [OpZero](https://opzero.sh). Part of the OpZero open-source ecosystem.
 
 ## How It Works
 
-CodeZero is a single Bun HTTP server that spawns `claude` CLI processes in `stream-json` duplex mode. It keeps stdin open across turns so the context cache stays warm, parses stdout events in real time, and fans them out to browser clients via Server-Sent Events.
+CodeZ is a single Bun HTTP server that spawns `claude` CLI processes in `stream-json` duplex mode. It keeps stdin open across turns so the context cache stays warm, parses stdout events in real time, and fans them out to browser clients via Server-Sent Events.
 
 ```
   Browser (React 19 SPA)
@@ -59,15 +59,15 @@ CodeZero is a single Bun HTTP server that spawns `claude` CLI processes in `stre
        +-- /mcp (MCP Streamable HTTP transport for agent access)
 ```
 
-**No API key in the loop.** CodeZero strips `ANTHROPIC_API_KEY` from subprocess environments by default so the CLI uses OAuth (your Max subscription). If a billing error occurs, it auto-retries with the API key as fallback.
+**No API key in the loop.** CodeZ strips `ANTHROPIC_API_KEY` from subprocess environments by default so the CLI uses OAuth (your Max subscription). If a billing error occurs, it auto-retries with the API key as fallback.
 
 ---
 
 ## MCP Server — Claude Chat as a Custom Connector
 
-CodeZero exposes a remote [MCP](https://modelcontextprotocol.io/) server with **17 tools** for full programmatic control. Authentication is handled by [MCPAuthKit](https://github.com/OpZero-sh/MCPAuthKit) (also an OpZero project), which provides OAuth 2.1 + PKCE token management.
+CodeZ exposes a remote [MCP](https://modelcontextprotocol.io/) server with **17 tools** for full programmatic control. Authentication is handled by [MCPAuthKit](https://github.com/OpZero-sh/MCPAuthKit) (also an OpZero project), which provides OAuth 2.1 + PKCE token management.
 
-This means **regular Claude** — on iOS, desktop, and web (claude.ai) — can connect to your CodeZero instance as a custom MCP connector and orchestrate Claude Code sessions. Claude chat becomes a remote control for Claude Code.
+This means **regular Claude** — on iOS, desktop, and web (claude.ai) — can connect to your CodeZ instance as a custom MCP connector and orchestrate Claude Code sessions. Claude chat becomes a remote control for Claude Code.
 
 ### What you can do from Claude chat
 
@@ -86,11 +86,11 @@ This means **regular Claude** — on iOS, desktop, and web (claude.ai) — can c
 
 ### Connect from Claude chat (iOS / desktop / web)
 
-Add CodeZero as a custom MCP connector in your Claude settings:
+Add CodeZ as a custom MCP connector in your Claude settings:
 
 ```json
 {
-  "codezero": {
+  "codez": {
     "type": "http",
     "url": "https://codez.yourdomain.com/mcp"
   }
@@ -111,7 +111,7 @@ For local access, no auth needed:
 
 ```json
 {
-  "codezero": {
+  "codez": {
     "type": "http",
     "url": "http://127.0.0.1:4097/mcp"
   }
@@ -134,7 +134,7 @@ See [docs/mcp.md](docs/mcp.md) for the full MCP server reference.
 
 ```bash
 git clone https://github.com/OpZero-sh/CodeZ.git
-cd CodeZero
+cd CodeZ
 bun run setup
 ```
 
@@ -159,7 +159,7 @@ bun run dev            # concurrent server (4097) + Vite dev server (5173)
 
 ## Remote Access with Cloudflare Tunnel
 
-CodeZero is designed to run on your local machine (Mac Mini, MacBook, home server) and be accessed remotely via a [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/). You set up your own tunnel and domain — CodeZero does not phone home or require any OpZero infrastructure.
+CodeZ is designed to run on your local machine (Mac Mini, MacBook, home server) and be accessed remotely via a [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/). You set up your own tunnel and domain — CodeZ does not phone home or require any OpZero infrastructure.
 
 ### Setup
 
@@ -171,10 +171,10 @@ brew install cloudflared
 cloudflared tunnel login
 
 # 3. Create a named tunnel
-cloudflared tunnel create codezero
+cloudflared tunnel create codez
 
 # 4. Route your subdomain to the tunnel
-cloudflared tunnel route dns codezero codez.yourdomain.com
+cloudflared tunnel route dns codez codez.yourdomain.com
 ```
 
 ### Configure
@@ -198,22 +198,22 @@ ingress:
 bun run start
 
 # Start the tunnel (separate terminal)
-cloudflared tunnel run codezero
+cloudflared tunnel run codez
 ```
 
-Your CodeZero instance is now live at `https://codez.yourdomain.com`.
+Your CodeZ instance is now live at `https://codez.yourdomain.com`.
 
 The server listens on plain HTTP. Cloudflare terminates TLS at the edge. Cookie auth uses the `Secure` flag, which works automatically through the tunnel and on loopback.
 
 ### MCPAuthKit setup (for MCP remote access)
 
-To let Claude chat (or other MCP clients) connect remotely, deploy an [MCPAuthKit](https://github.com/OpZero-sh/MCPAuthKit) instance on your own Cloudflare account and register CodeZero as a resource server. See [docs/mcp.md](docs/mcp.md) for step-by-step instructions.
+To let Claude chat (or other MCP clients) connect remotely, deploy an [MCPAuthKit](https://github.com/OpZero-sh/MCPAuthKit) instance on your own Cloudflare account and register CodeZ as a resource server. See [docs/mcp.md](docs/mcp.md) for step-by-step instructions.
 
 ---
 
 ## Channels — Bidirectional Terminal Relay
 
-Channels let you send messages from the CodeZero web UI into a `claude` process running in your terminal. Your phone and your terminal talk to the same session.
+Channels let you send messages from the CodeZ web UI into a `claude` process running in your terminal. Your phone and your terminal talk to the same session.
 
 ```bash
 ./scripts/launch-opzero.sh --cwd ~/my/project
@@ -230,10 +230,10 @@ See [docs/channels.md](docs/channels.md) for the full guide, security model, and
 ```bash
 docker-compose up -d
 # or
-docker build -t codezero .
+docker build -t codez .
 docker run -d -p 4097:4097 \
   -v ~/.config/opzero-claude:/root/.config/opzero-claude \
-  --restart unless-stopped codezero
+  --restart unless-stopped codez
 ```
 
 ---
@@ -251,17 +251,17 @@ See [docs/launchd.md](docs/launchd.md) for the runbook.
 
 ## Config
 
-Server config lives at `~/.config/opzero-claude/config.json`. On first run, the server generates a random password, bcrypt-hashes it, and writes an auth secret. You can also run `bun run setup` or `codezero init` to configure interactively.
+Server config lives at `~/.config/opzero-claude/config.json`. On first run, the server generates a random password, bcrypt-hashes it, and writes an auth secret. You can also run `bun run setup` or `codez init` to configure interactively.
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CODEZERO_PORT` | `4097` | Server port |
-| `CODEZERO_HOST` | `127.0.0.1` | Server bind host |
+| `CODEZ_PORT` | `4097` | Server port |
+| `CODEZ_HOST` | `127.0.0.1` | Server bind host |
 | `AUTHKIT_URL` | _(none)_ | Your MCPAuthKit instance URL (required for remote MCP access) |
-| `CODEZERO_MCP_URL` | auto-detected | Public URL for MCP Protected Resource Metadata |
-| `CODEZERO_MCP_PORT` | `4098` | Port for standalone MCP server |
+| `CODEZ_MCP_URL` | auto-detected | Public URL for MCP Protected Resource Metadata |
+| `CODEZ_MCP_PORT` | `4098` | Port for standalone MCP server |
 
 ---
 
@@ -283,7 +283,7 @@ Server config lives at `~/.config/opzero-claude/config.json`. On first run, the 
 ## Project Structure
 
 ```
-CodeZero/
+CodeZ/
   server/           Bun HTTP server (no framework)
     index.ts          entry point, wires config + auth + pool + routes + SSE
     claude/           SessionProcess, SessionPool, SessionTailer, history
@@ -302,9 +302,9 @@ CodeZero/
 
 ---
 
-## Why CodeZero Exists
+## Why CodeZ Exists
 
-Claude Code is powerful but terminal-bound. CodeZero lets you:
+Claude Code is powerful but terminal-bound. CodeZ lets you:
 
 - **Use Claude Code from your phone** while away from your desk
 - **Watch what agent teams are doing** in real time across multiple sessions

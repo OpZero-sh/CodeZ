@@ -1,11 +1,11 @@
-# CodeZero Installation Guide
+# CodeZ Installation Guide
 
 ## Docker (Recommended)
 
 ```bash
 # Build and run
-docker build -t codezero .
-docker run -d -p 4097:4097 -v ~/.config/opzero-claude:/root/.config/opzero-claude --restart unless-stopped codezero
+docker build -t codez .
+docker run -d -p 4097:4097 -v ~/.config/opzero-claude:/root/.config/opzero-claude --restart unless-stopped codez
 
 # Or with docker-compose
 docker-compose up -d
@@ -15,11 +15,11 @@ docker-compose up -d
 
 ```bash
 # Run directly without installation
-bunx codezero serve
+bunx codez serve
 
 # Or install globally
 bun add -g opzero-claude
-codezero serve
+codez serve
 ```
 
 ## Homebrew (Tap)
@@ -29,16 +29,16 @@ codezero serve
 brew tap opzero-sh/tap
 
 # Install
-brew install codezero
+brew install codez
 
 # Run
-codezero serve
+codez serve
 ```
 
 Expected Homebrew formula (`opzero-sh/homebrew-tap`):
 
 ```ruby
-class Codezero < Formula
+class Codez < Formula
   desc "Self-hosted Claude Code server"
   homepage "https://github.com/OpZero-sh/CodeZ"
   url "https://github.com/OpZero-sh/CodeZ/archive/refs/tags/vX.Y.Z.tar.gz"
@@ -53,7 +53,7 @@ class Codezero < Formula
   end
 
   test do
-    system "#{bin}/codezero", "version"
+    system "#{bin}/codez", "version"
   end
 end
 ```
@@ -74,16 +74,16 @@ For persistent tunnels with a domain:
 
 ```bash
 # Create tunnel
-cloudflared tunnel create codezero
+cloudflared tunnel create codez
 
 # Add DNS route
-cloudflared tunnel route dns add codezero your-domain.example.com
+cloudflared tunnel route dns add codez your-domain.example.com
 
 # Configure ingress
-cloudflared tunnel ingress rule --tunnel-name codezero --hostname your-domain.example.com --origin-port 4097
+cloudflared tunnel ingress rule --tunnel-name codez --hostname your-domain.example.com --origin-port 4097
 
 # Run
-cloudflared tunnel run codezero
+cloudflared tunnel run codez
 ```
 
 ## macOS launchd
@@ -115,16 +115,16 @@ Load with: `launchctl load ~/Library/LaunchAgents/com.opzero.claude.plist`
 
 Override config file settings:
 
-- `CODEZERO_PORT` - Server port (default: 4097)
-- `CODEZERO_HOST` - Server host (default: 127.0.0.1)
-- `CODEZERO_CONFIG_PATH` - Custom config file path
+- `CODEZ_PORT` - Server port (default: 4097)
+- `CODEZ_HOST` - Server host (default: 127.0.0.1)
+- `CODEZ_CONFIG_PATH` - Custom config file path
 
 ## First Run Setup
 
 Run the interactive setup:
 
 ```bash
-codezero init
+codez init
 ```
 
 Or use Docker volume mounting to provide a config file at `~/.config/opzero-claude/config.json`.

@@ -1,4 +1,4 @@
-# CodeZero — Agent Operating Guide
+# CodeZ — Agent Operating Guide
 
 This file is the operating manual for any agent (subagent, orchestrator, or future-Claude-session)
 working in this codebase. It supplements `CLAUDE.md` (architecture) and `Roadmap.md`

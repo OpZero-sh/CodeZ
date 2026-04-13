@@ -1,5 +1,5 @@
 /**
- * Bridges the CodeZero SSE event stream into a pollable buffer for MCP tools.
+ * Bridges the CodeZ SSE event stream into a pollable buffer for MCP tools.
  * MCP tools are request/response, so they can't hold open a streaming connection
  * during a single tool call. EventPoller maintains the SSE connection in the
  * background and lets tools drain buffered events on demand.

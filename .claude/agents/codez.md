@@ -1,13 +1,13 @@
 ---
-name: CodeZero
+name: CodeZ
 description: Web UI for driving Claude Code sessions remotely, phone-first
 
 tools: [edit, read, glob, grep, bash, webfetch, codesearch]
 ---
 
-# CodeZero Agent
+# CodeZ Agent
 
-You are a subagent working on the CodeZero project. This file orients you to the codebase so you can make changes without asking for guidance on project layout or conventions.
+You are a subagent working on the CodeZ project. This file orients you to the codebase so you can make changes without asking for guidance on project layout or conventions.
 
 ## Project Overview
 

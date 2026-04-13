@@ -1,4 +1,4 @@
-# CodeZero Roadmap
+# CodeZ Roadmap
 
 Living document. Everything we know we want to build or investigate next,
 ordered roughly by impact. Architecture rules and conventions live in
@@ -40,7 +40,7 @@ Channels (full round trip):
   liveness check
 
 Rebrands:
-- Product renamed **CodeZero** (wordmark, titles, banners — package and
+- Product renamed **CodeZ** (wordmark, titles, banners — package and
   repo name stay `opzero-claude`)
 - **AuthZero** restyle of MCPAuthKit consent screen on feature branch
   `rebrand-authzero`, not yet deployed (see Open Threads below)
@@ -101,7 +101,7 @@ Wave 3 — voice + palette + memory + auth + research probes (2026-04-11):
   autoDream. Findings: KAIROS/ULTRAPLAN are compile-time stripped from public builds;
   MONITOR_TOOL shipped v2.1.98+; VOICE_MODE has no native Claude Code primitive;
   BUDDY is real but not scriptable; autoDream has readable memory files.
-- **`.claude/agents/codezero.md`** — agent definition file orienting future subagents
+- **`.claude/agents/codez.md`** — agent definition file orienting future subagents
   to project layout, conventions, style rules, gotchas, and known open items.
 
 Wave 4 — paste-image + markers + memory + session tree (2026-04-11):
@@ -111,7 +111,7 @@ Wave 4 — paste-image + markers + memory + session tree (2026-04-11):
 - **Markers** — bookmark system for sessions. Pin icon on message hover, violet side rail
   on marked messages, markers panel (bottom sheet, cross-session toggle), ThreadNav
   jump-to-prev/next-marker with `m`/`M` shortcuts.
-- **CodeZero memory** — persistent state store at `~/.config/opzero-claude/state.json`.
+- **CodeZ memory** — persistent state store at `~/.config/opzero-claude/state.json`.
   `server/state.ts` with `get/set/save`. `GET /api/state` and `PATCH /api/state` routes.
   Stores markers, preferences, and recent cwds. Markers panel reads/writes through the API.
 - **Session tree by repo name** — sidebar now shows parsed git remote origin as the group
@@ -134,7 +134,7 @@ Wave 5 — agent control surface (2026-04-12):
 
 **0. Computer use integration.** Claude Code 2026-w14 introduced computer
 use — Claude can control the screen (mouse, keyboard, screenshots) as a
-tool. CodeZero should:
+tool. CodeZ should:
 
 - Surface `/computer` as a slash command and quick-action chip (done in
   this commit for the chip)
@@ -144,7 +144,7 @@ tool. CodeZero should:
   after diff when available
 - Stream computer-use screenshots into the thread so the mobile user
   can watch Claude operate their Mac in real time
-- Consider: should CodeZero sessions be able to START computer use, or
+- Consider: should CodeZ sessions be able to START computer use, or
   only mirror sessions that are already using it? If starting, the
   server needs to pass `--computer-use` or equivalent flag to the CLI
 - Fetch https://code.claude.com/docs/en/whats-new/2026-w14 for the
@@ -192,7 +192,7 @@ Estimated: one research wave of 6-10 background agents, ~30 minutes
 wall, ~$5-10 subagent cost. Dispatch by dropping the `/orchestrate`
 skill into a fresh session pointed at this repo.
 
-**2. [SHIPPED] PWA install manifest + icons.** Install CodeZero to the iOS home
+**2. [SHIPPED] PWA install manifest + icons.** Install CodeZ to the iOS home
 screen as a standalone app. Removes Safari chrome entirely (the iOS
 Safari URL bar problem we've already patched around with safe-area
 padding goes away for good in standalone mode). Scope: add `manifest.
@@ -292,7 +292,7 @@ Design sketch:
   marks the *next* assistant turn, or a "Mark" button in the message
   action menu. Optional one-line label; free-text.
 - **Marker shape**: `{ id, sessionId, messageId, partId?, label?,
-  note?, createdAt, resolved?: boolean }`. Stored in CodeZero's own
+  note?, createdAt, resolved?: boolean }`. Stored in CodeZ's own
   memory (see item 17), not in the JSONL. Scoped to the session by
   default, with a "global / cross-session" toggle.
 - **Markers panel**: a new bottom sheet (reuse shadcn Sheet), listing
@@ -310,9 +310,9 @@ Estimated: half a day for the core (schema, store, drop-action,
 panel). Polish and cross-session view another half. High user value
 for a tool built around watching long subagent runs go by.
 
-**15. [SHIPPED] CodeZero memory — local persistent state store.** Separate from
+**15. [SHIPPED] CodeZ memory — local persistent state store.** Separate from
 Claude Code's auto-memory (which is per-project under
-`~/.claude/projects/<slug>/memory/`), CodeZero itself should persist
+`~/.claude/projects/<slug>/memory/`), CodeZ itself should persist
 its own state between restarts. What belongs here:
 
 - User preferences: default project, default model, permission mode,
@@ -337,7 +337,7 @@ gets cheap. Half a day for the backing store + API, another half for
 the initial consumers.
 
 **16. Messaging / iMessage relay — text-in-text-out surface.** Use
-CodeZero as a text relay into Claude. The user sends an iMessage from
+CodeZ as a text relay into Claude. The user sends an iMessage from
 anywhere (phone, watch, Mac, CarPlay) and Claude responds in the same
 thread. This is the "claw" / opencode Telegram-bridge pattern but
 targeting Apple's text stack specifically.
@@ -350,7 +350,7 @@ AppleScript. We don't have to build the iMessage side from scratch;
 we just install it and aim it at a session. The work is integration:
 
 - Install the iMessage plugin (or our own fork) and wire it into
-  CodeZero's launcher so it attaches alongside `opzero-channel`
+  CodeZ's launcher so it attaches alongside `opzero-channel`
 - In the UI, expose a "Relay this session to iMessage" toggle that
   writes an entry to `~/.claude/channels/imessage/.env` and restarts
   the session with `--channels plugin:imessage@claude-plugins-official`
@@ -370,7 +370,7 @@ needs a Slack app). But iMessage-first for the iPhone-primary use
 case.
 
 Estimated: ~1 day for the first working iMessage -> Claude flow
-through CodeZero, another day for the inbound visualization + contact
+through CodeZ, another day for the inbound visualization + contact
 management UI. Depends on item 3 (Channel end-to-end verification)
 working first.
 
@@ -388,7 +388,7 @@ which is unreadable. Switch to:
 
 Implementation: extend `listProjects` in `server/claude/history.ts` to
 resolve each project's cwd -> repo root -> repo name on first read,
-cache the result on disk (CodeZero memory, item 15) keyed by absolute
+cache the result on disk (CodeZ memory, item 15) keyed by absolute
 path, invalidate on a weekly basis or when the project's JSONL count
 changes. Walking up from cwd looking for `.git` is cheap; reading the
 remote config is cheaper than a git subprocess if we parse
@@ -407,7 +407,7 @@ text overflows badly.
 ### Tier 2 — developer ergonomics + distribution
 
 **18. [SHIPPED] Self-healing — detect and repair degraded state automatically.**
-CodeZero has several pieces of state that can rot silently: stale
+CodeZ has several pieces of state that can rot silently: stale
 channel discovery files, stuck SSE bridges, orphaned SessionProcess
 entries, tailers that missed an fs.watch event, config drift. Today
 most of these are caught opportunistically or not at all. Build a
@@ -451,8 +451,8 @@ discovery for abc-123 (pid 99999 dead)".
 Estimated: half day for the loop + first set of checks, another
 half for the UI surfacing. Pays off every future deployment.
 
-**19. [SHIPPED] CodeZero subagent definition.** Add
-`.claude/agents/codezero.md` with frontmatter and a system prompt that
+**19. [SHIPPED] CodeZ subagent definition.** Add
+`.claude/agents/codez.md` with frontmatter and a system prompt that
 orients a future claude subagent to this project's layout, conventions,
 gotchas, and commit style. The user explicitly asked for this during
 the CLAUDE.md wave; we wrote the doc but got redirected to Channels
@@ -473,29 +473,29 @@ minimum we want:
 Use `bun test` (no external framework needed). ~half day for the core
 set, adds confidence on every future refactor.
 
-**21. [SHIPPED] Distribution packaging.** Make CodeZero installable by other
+**21. [SHIPPED] Distribution packaging.** Make CodeZ installable by other
 users running their own claude CLI. Path options:
 
-- **Homebrew tap**: `brew install opzero-sh/tap/codezero`, installer
+- **Homebrew tap**: `brew install opzero-sh/tap/codez`, installer
   drops a launchd plist and bun binary
-- **bunx one-liner**: `bunx codezero serve` pulls from a published bun
+- **bunx one-liner**: `bunx codez serve` pulls from a published bun
   package
-- **Docker**: `docker run opzero/codezero` for Linux users
+- **Docker**: `docker run opzero/codez` for Linux users
 
 Blockers: pluggable auth (done), config UX that isn't "edit JSON by
-hand" (needs a `codezero init` subcommand), docs for pointing at your
+hand" (needs a `codez init` subcommand), docs for pointing at your
 own Cloudflare tunnel / Tailscale / etc. ~1-2 days.
 
-**22. Multi-user distribution — make CodeZero deployable by anyone.**
+**22. Multi-user distribution — make CodeZ deployable by anyone.**
 
 > **STATUS: PLANNING ONLY.** This item captures the full scope of work
-> required to let other users deploy CodeZero with their own domains and
+> required to let other users deploy CodeZ with their own domains and
 > Cloudflare accounts. It is NOT ready for implementation. Do not start
 > building any of this until the scope is explicitly approved and
 > sequenced into a sprint. The items below are a research inventory,
 > not a task list.
 
-Currently CodeZero is a single-operator tool with the operator's infrastructure
+Currently CodeZ is a single-operator tool with the operator's infrastructure
 baked into defaults and docs. The architecture already supports
 multi-user deployment (pluggable auth, config-driven setup, dynamic
 path resolution), but several hardcoded values and missing setup tooling
@@ -507,12 +507,12 @@ prevent someone else from deploying it today.
 - `AUTHKIT_URL` defaults to `https://authkit.yourdomain.com` in
   `mcp-transport.ts` — must come from `config.json` alongside
   `authProvider` selection
-- `CODEZERO_MCP_URL` env var fallback builds from request host (fine),
+- `CODEZ_MCP_URL` env var fallback builds from request host (fine),
   but the AuthKit URL is baked in (not fine)
 - Any other env vars or defaults that assume `yourdomain.com`
 
 *First-run experience:*
-- `codezero init` command or interactive first-run wizard that prompts
+- `codez init` command or interactive first-run wizard that prompts
   for: domain, auth provider (cookie / Cloudflare Access / AuthKit),
   Cloudflare tunnel setup, and generates `config.json`
 - Today `loadConfig()` auto-generates a password and secret on first
@@ -543,7 +543,7 @@ prevent someone else from deploying it today.
 - `.env.example` with all configurable values documented
 
 *Packaging (depends on item 16):*
-- Homebrew tap, `bunx codezero`, or Docker image so users don't
+- Homebrew tap, `bunx codez`, or Docker image so users don't
   clone the repo
 - The init script should be the entry point, not reading CLAUDE.md
 
@@ -595,8 +595,8 @@ Plus follow-ups:
 adopt the glass-card + gradient-text look so the whole auth flow feels
 consistent. Minor — it's a brief interstitial most users barely see.
 
-**25. [SHIPPED] Onboarding / landing page / docs for CodeZero.** There's no
-marketing page or onboarding. If CodeZero goes public (item 17), it
+**25. [SHIPPED] Onboarding / landing page / docs for CodeZ.** There's no
+marketing page or onboarding. If CodeZ goes public (item 17), it
 needs:
 
 - A short landing explaining what it is and why (one page, matching
@@ -651,7 +651,7 @@ activity (DEBUGGING stat increases with tool calls, CHAOS with aborts,
 SNARK with errors). Pure fun. Low priority, but would make the UI
 memorable.
 
-**33. Skills / plugins / MCP management and discovery.** Extend CodeZero
+**33. Skills / plugins / MCP management and discovery.** Extend CodeZ
 to manage Claude Code's installed capabilities: skills, slash commands,
 MCP servers, and agents. The goal is a `/skills` command (analogous to
 `skills.sh` in opencode) that lists available skills with descriptions,
@@ -659,14 +659,14 @@ lets users install from URLs or the filesystem, and surfaces which skills
 are active for the current project. Also handles plugin discovery:
 scan `~/.claude/plugins/` and `~/.claude/agents/` and expose them in
 the UI alongside the existing session metadata. The `find-skills` skill
-probe already exists; the gap is wiring it into CodeZero's own session
+probe already exists; the gap is wiring it into CodeZ's own session
 management and surfacing it in the mobile UI. ~half day for the
 installer/discovery layer, another half for the UI.
 
 **34. Built-in brainstorming with visual companion.** Add a native
 `/brainstorm` command in the PromptBox that opens a brainstorming
 session — wired into the same skill that this agent uses. This makes
-ideation a first-class CodeZero feature rather than a one-off CLI
+ideation a first-class CodeZ feature rather than a one-off CLI
 workflow. The command opens a full-screen brainstorming overlay with
 the same one-question-at-a-time flow. After the user approves a design,
 it auto-generates a spec file in `docs/superpowers/specs/` and queues
@@ -684,16 +684,16 @@ gap is: auto-scoping ("what can I ship in wave N?"), retry logic for
 failed agent tasks, and a progress HUD in the UI that shows wave
 number, items in flight, and completed count. Also add a "pause" affordance
 so the user can interrupt mid-wave. This is the product-level swarm:
-CodeZero running CodeZero. ~1-2 days.
+CodeZ running CodeZ. ~1-2 days.
 
-**36. [SHIPPED] OpZero integrations and connectors.** CodeZero currently operates
+**36. [SHIPPED] OpZero integrations and connectors.** CodeZ currently operates
 in isolation — it knows about its own sessions but not the surrounding
 tool ecosystem. Surface the other OpZero projects in the UI:
 - **Project browser**: scan `~/opz/` and the `opzero-sh` GitHub org for
   repos, show them in a sidebar panel with health indicators
 - **Connector registry**: `opzero.sh/mcp`, `mcpauthkit`, `audit`,
-  `infra`, and any other local projects get a "Open in CodeZero" action
-- **Shared state**: MCP AuthKit auth state propagates into CodeZero sessions
+  `infra`, and any other local projects get a "Open in CodeZ" action
+- **Shared state**: MCP AuthKit auth state propagates into CodeZ sessions
   so agents can interact with protected OpZero APIs without re-auth
 - **Cross-repo context**: when Claude Code runs in a worktree, make it
   aware of sibling repos (e.g. `opzero.sh` needs `mcpauthkit` in scope)
@@ -704,17 +704,17 @@ cross-repo context injection.
 **37. UAT mode — human-in-the-loop test runner.** Surface a UAT
 (User Acceptance Testing) workflow in the UI: the user records a
 sequence of browser actions (or imports from `agent-browser` output),
-runs them against a target URL, and CodeZero reports pass/fail per step
+runs them against a target URL, and CodeZ reports pass/fail per step
 with screenshots. This turns the `dogfood` skill pattern into a first-class
 UI panel. The agent-browser already has the primitives; the gap is wiring
-it into CodeZero sessions so test runs appear as live sessions with
+it into CodeZ sessions so test runs appear as live sessions with
 structured output. Also: replay mode (rerun a recorded sequence), diff
 mode (compare screenshots between runs), and CI export (JSONL test
 results for GitHub Actions). ~half day.
 
 **38. MCP server monitoring and debugging.** When Claude Code loads MCP
 servers (from `~/.config/claude/mcp_servers.json` or project-level
-config), surface their status in CodeZero: which servers are connected,
+config), surface their status in CodeZ: which servers are connected,
 latency per call, error rates, tool inventory. This extends the existing
 `SessionInfoSheet` metadata section and adds a dedicated `MCP Monitor`
 panel accessible from the header. On the server side, instrument the
@@ -723,7 +723,7 @@ aggregate and display per-server metrics. Also add a "relay MCP traffic"
 toggle that logs all MCP request/response payloads for debugging.
 Estimated: half day.
 
-**39. Observability — session telemetry and analytics.** Give CodeZero
+**39. Observability — session telemetry and analytics.** Give CodeZ
 insight into its own usage patterns beyond per-session cost tracking:
 - **Activity timeline**: per-project bar chart of session frequency and
   duration over the last 30 days (stored in `~/.config/opzero-claude/state.json`)
@@ -804,7 +804,7 @@ effort level + context menu + compact mode.
 
 - **Push notifications.** User explicitly said they don't want them.
   All `session.idle` / `session.error` surfacing stays in-app only.
-- **Multi-user / team mode.** CodeZero is designed for one user's
+- **Multi-user / team mode.** CodeZ is designed for one user's
   devices talking to one user's claude sessions. No plans to add
   multi-tenancy.
 - **Replacing Claude Code.** We wrap, we don't reimplement.
@@ -812,7 +812,7 @@ effort level + context menu + compact mode.
 ## Decisions worth remembering
 
 - **Package name stays `opzero-claude`.** Only the UI brand changed to
-  CodeZero. Never rename on disk, in the repo, or in package.json.
+  CodeZ. Never rename on disk, in the repo, or in package.json.
   Touching those breaks launchd, the github remote, config paths.
 - **Mirror sessions are writable.** We relaxed the 60-second mtime
   guard after the maintainer pointed out it was blocking a path that actually

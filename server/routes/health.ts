@@ -12,7 +12,7 @@ export function setShutdownFn(fn: () => Promise<void>): void {
 }
 
 export function healthRoute(_req: Request): Response {
-  return Response.json({ ok: true, name: "codezero", version: "0.1.0" });
+  return Response.json({ ok: true, name: "codez", version: "0.1.0" });
 }
 
 export function healthDetailsRoute(_req: Request): Response {

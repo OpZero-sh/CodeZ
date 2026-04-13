@@ -1,4 +1,4 @@
-# CodeZero Documentation
+# CodeZ Documentation
 
 ## Guides
 
@@ -13,7 +13,7 @@
 | Component | Port | Description |
 |-----------|------|-------------|
 | Bun HTTP server | 4097 | Main server (API + SPA + MCP transport) |
-| codezero-mcp | 4098 | Standalone MCP server (development/isolation) |
+| codez-mcp | 4098 | Standalone MCP server (development/isolation) |
 | Vite dev server | 5173 | Frontend dev server (proxies /api to 4097) |
 
 ## Related Projects

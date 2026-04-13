@@ -1,20 +1,20 @@
 #!/usr/bin/env bun
 /**
- * codezero-mcp: a remote MCP server that exposes CodeZero's session management,
+ * codez-mcp: a remote MCP server that exposes CodeZ's session management,
  * prompting, and event streaming as MCP tools over Streamable HTTP transport.
  * Agents connect via {"type": "http", "url": "http://127.0.0.1:4098/mcp"}.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { CodeZeroClient } from "./client.ts";
+import { CodeZClient } from "./client.ts";
 import { EventPoller } from "./events.ts";
 import { registerTools } from "./tools.ts";
 
-const PORT = Number(process.env.CODEZERO_MCP_PORT) || 4098;
-const CODEZERO_URL = process.env.CODEZERO_URL || "http://127.0.0.1:4097";
+const PORT = Number(process.env.CODEZ_MCP_PORT) || 4098;
+const CODEZ_URL = process.env.CODEZ_URL || "http://127.0.0.1:4097";
 const AUTHKIT_URL = process.env.AUTHKIT_URL || "";
-const RESOURCE_URL = process.env.CODEZERO_MCP_URL || `http://127.0.0.1:${PORT}`;
+const RESOURCE_URL = process.env.CODEZ_MCP_URL || `http://127.0.0.1:${PORT}`;
 
 interface UserInfo {
   sub: string;
@@ -73,7 +73,7 @@ function unauthorizedResponse(req: Request): Response {
 async function authenticateRequest(
   req: Request,
 ): Promise<{ token: string; clientId: string; scopes: string[] } | null> {
-  // Loopback bypass — same pattern as the main CodeZero server
+  // Loopback bypass — same pattern as the main CodeZ server
   if (isLoopback(req)) {
     return { token: "loopback", clientId: "loopback", scopes: ["mcp:tools"] };
   }
@@ -88,8 +88,8 @@ async function authenticateRequest(
   return { token, clientId: user.sub, scopes: ["mcp:tools"] };
 }
 
-const client = new CodeZeroClient(CODEZERO_URL);
-const poller = new EventPoller(CODEZERO_URL);
+const client = new CodeZClient(CODEZ_URL);
+const poller = new EventPoller(CODEZ_URL);
 poller.connect();
 
 // Stateful: each MCP session gets its own transport so notifications
@@ -98,7 +98,7 @@ const transports = new Map<string, WebStandardStreamableHTTPServerTransport>();
 
 function createServer(): Server {
   const server = new Server(
-    { name: "codezero-mcp", version: "0.1.0" },
+    { name: "codez-mcp", version: "0.1.0" },
     {
       capabilities: { tools: {} },
     },
@@ -110,7 +110,7 @@ function createServer(): Server {
 const httpServer = Bun.serve({
   // Bind 0.0.0.0 so the server is reachable through Cloudflare tunnel;
   // auth gate protects non-loopback requests via AuthKit OAuth tokens.
-  hostname: process.env.CODEZERO_MCP_HOST || "0.0.0.0",
+  hostname: process.env.CODEZ_MCP_HOST || "0.0.0.0",
   port: PORT,
   idleTimeout: 0,
   fetch: async (req: Request): Promise<Response> => {
@@ -204,7 +204,7 @@ const httpServer = Bun.serve({
     if (url.pathname === "/health") {
       return Response.json({
         ok: true,
-        name: "codezero-mcp",
+        name: "codez-mcp",
         sessions: transports.size,
       });
     }
@@ -217,7 +217,7 @@ let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.error(`[codezero-mcp] shutting down (${signal})`);
+  console.error(`[codez-mcp] shutting down (${signal})`);
   poller.disconnect();
   httpServer.stop(true);
   process.exit(0);
@@ -227,5 +227,5 @@ process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
 console.error(
-  `[codezero-mcp] ready port=${PORT} codezero=${CODEZERO_URL} pid=${process.pid}`,
+  `[codez-mcp] ready port=${PORT} codez=${CODEZ_URL} pid=${process.pid}`,
 );

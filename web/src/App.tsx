@@ -354,7 +354,7 @@ function Header({
             <DialogHeader>
               <DialogTitle>Restart server?</DialogTitle>
               <DialogDescription>
-                The CodeZero server will restart. Active sessions will be disposed and the page will reconnect automatically.
+                The CodeZ server will restart. Active sessions will be disposed and the page will reconnect automatically.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

@@ -1,4 +1,4 @@
-export class CodeZeroClient {
+export class CodeZClient {
   private baseUrl: string;
 
   constructor(baseUrl = "http://127.0.0.1:4097") {
@@ -11,7 +11,7 @@ export class CodeZeroClient {
     const res = await fetch(`${this.baseUrl}${path}`);
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`CodeZero API ${res.status}: ${text}`);
+      throw new Error(`CodeZ API ${res.status}: ${text}`);
     }
     if (res.status === 204) return null;
     return res.json();
@@ -25,7 +25,7 @@ export class CodeZeroClient {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`CodeZero API ${res.status}: ${text}`);
+      throw new Error(`CodeZ API ${res.status}: ${text}`);
     }
     if (res.status === 204) return null;
     return res.json();
@@ -39,7 +39,7 @@ export class CodeZeroClient {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`CodeZero API ${res.status}: ${text}`);
+      throw new Error(`CodeZ API ${res.status}: ${text}`);
     }
     if (res.status === 204) return null;
     return res.json();
@@ -49,7 +49,7 @@ export class CodeZeroClient {
     const res = await fetch(`${this.baseUrl}${path}`, { method: "DELETE" });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`CodeZero API ${res.status}: ${text}`);
+      throw new Error(`CodeZ API ${res.status}: ${text}`);
     }
     if (res.status === 204) return null;
     return res.json();

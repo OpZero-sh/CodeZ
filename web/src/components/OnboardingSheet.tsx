@@ -88,7 +88,7 @@ export function OnboardingSheet({ open, onOpenChange }: OnboardingSheetProps) {
             </SheetTitle>
           </div>
           <SheetDescription className="text-muted-foreground">
-            Install CodeZero as an app for the best experience.
+            Install CodeZ as an app for the best experience.
           </SheetDescription>
         </SheetHeader>
 
@@ -144,7 +144,7 @@ export function OnboardingSheet({ open, onOpenChange }: OnboardingSheetProps) {
                 </Step>
                 <Step num={3} title="Confirm">
                   Tap <span className="text-primary">Install</span> or{" "}
-                  <span className="text-primary">Add</span> to add CodeZero to your home screen.
+                  <span className="text-primary">Add</span> to add CodeZ to your home screen.
                 </Step>
               </div>
             </div>
@@ -154,7 +154,7 @@ export function OnboardingSheet({ open, onOpenChange }: OnboardingSheetProps) {
             <p className="text-[11px] text-muted-foreground">
               <span className="text-primary font-medium">Why install?</span> Installed apps
               load faster, work offline, and feel like native apps. No address bar, no tabs —
-              just CodeZero.
+              just CodeZ.
             </p>
           </div>
         </div>

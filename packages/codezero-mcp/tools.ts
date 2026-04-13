@@ -3,7 +3,7 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import type { CodeZeroClient } from "./client.ts";
+import type { CodeZClient } from "./client.ts";
 import type { EventPoller } from "./events.ts";
 
 export interface ToolCallEvent {
@@ -184,7 +184,7 @@ const TOOLS = [
   {
     name: "poll_events",
     description:
-      "Poll for real-time SSE events from CodeZero. Returns buffered events since last poll. Use to monitor session activity, message streaming, and task progress.",
+      "Poll for real-time SSE events from CodeZ. Returns buffered events since last poll. Use to monitor session activity, message streaming, and task progress.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -203,7 +203,7 @@ const TOOLS = [
   },
   {
     name: "get_health",
-    description: "Check CodeZero server health",
+    description: "Check CodeZ server health",
     inputSchema: { type: "object" as const, properties: {}, required: [] },
   },
   {
@@ -215,13 +215,13 @@ const TOOLS = [
   {
     name: "get_state",
     description:
-      "Get CodeZero application state (markers, preferences, recent cwds)",
+      "Get CodeZ application state (markers, preferences, recent cwds)",
     inputSchema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "update_state",
     description:
-      "Update CodeZero application state (merge markers, preferences)",
+      "Update CodeZ application state (merge markers, preferences)",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -245,7 +245,7 @@ const TOOLS = [
 async function dispatch(
   name: string,
   args: Record<string, unknown>,
-  client: CodeZeroClient,
+  client: CodeZClient,
   poller: EventPoller,
 ): Promise<unknown> {
   switch (name) {
@@ -309,7 +309,7 @@ async function dispatch(
 
 export function registerTools(
   server: Server,
-  client: CodeZeroClient,
+  client: CodeZClient,
   poller: EventPoller,
   onToolCall?: (event: ToolCallEvent) => void,
 ): void {
