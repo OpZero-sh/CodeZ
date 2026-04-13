@@ -6,6 +6,8 @@ CodeZ wraps the official [Claude Code CLI](https://docs.anthropic.com/en/docs/cl
 
 Built by [OpZero](https://opzero.sh). Part of the OpZero open-source ecosystem.
 
+<img width="863" height="1024" alt="image" src="https://github.com/user-attachments/assets/cd63a715-625c-4c4b-87d9-7c99939830ca" />
+
 ---
 
 ## Features
