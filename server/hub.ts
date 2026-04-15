@@ -8,6 +8,7 @@ import type { SessionPool } from "./claude/pool";
 import type { EventBus } from "./bus";
 import { listProjects, listSessionsForProject } from "./claude/history";
 import type { Config } from "./config";
+import { getAccessToken, createTokenRefresher } from "./hub-auth";
 
 export interface HubConfig {
   url: string;
@@ -25,7 +26,15 @@ export async function loadHubConfig(): Promise<HubConfig | null> {
   const url = process.env.CODEZ_HUB_URL;
   if (!url) return null;
 
+  // Priority: env var > OAuth flow > token file
   let token = process.env.CODEZ_HUB_TOKEN;
+  if (!token) {
+    try {
+      token = await getAccessToken();
+    } catch (err) {
+      console.error("[hub] OAuth login failed:", err instanceof Error ? err.message : err);
+    }
+  }
   if (!token) {
     try {
       token = (await readFile(TOKEN_PATH, "utf-8")).trim();
@@ -225,14 +234,7 @@ export async function startHubAgent(
     },
     repos,
     codezApiUrl: `http://127.0.0.1:${appConfig.port}`,
-    onTokenRefresh: async () => {
-      try {
-        const freshToken = (await readFile(TOKEN_PATH, "utf-8")).trim();
-        return freshToken || null;
-      } catch {
-        return null;
-      }
-    },
+    onTokenRefresh: createTokenRefresher(),
   };
 
   const handler = createCommandHandler(pool, appConfig);
