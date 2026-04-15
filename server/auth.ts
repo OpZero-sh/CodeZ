@@ -206,26 +206,28 @@ export function parseCookies(header: string | null): Record<string, string> {
   return out;
 }
 
-export function buildSessionCookie(token: string): string {
-  return [
+export function buildSessionCookie(token: string, secure = true): string {
+  const parts = [
     `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`,
     "HttpOnly",
-    "Secure",
     "Path=/",
     "SameSite=Lax",
     `Max-Age=${SESSION_MAX_AGE_SECONDS}`,
-  ].join("; ");
+  ];
+  if (secure) parts.splice(2, 0, "Secure");
+  return parts.join("; ");
 }
 
-export function buildClearSessionCookie(): string {
-  return [
+export function buildClearSessionCookie(secure = true): string {
+  const parts = [
     `${SESSION_COOKIE_NAME}=`,
     "HttpOnly",
-    "Secure",
     "Path=/",
     "SameSite=Lax",
     "Max-Age=0",
-  ].join("; ");
+  ];
+  if (secure) parts.splice(2, 0, "Secure");
+  return parts.join("; ");
 }
 
 // ---------------------------------------------------------------------------

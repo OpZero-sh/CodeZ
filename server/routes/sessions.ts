@@ -6,6 +6,7 @@ import {
   decodeProjectSlug,
 } from "../claude/history";
 import { claudeProjectsRoot } from "../claude/paths";
+import { saveSessionTitle } from "../claude/session-titles";
 import {
   readChannelDiscovery,
   injectToChannel,
@@ -239,6 +240,16 @@ export async function sessionsRoutes(
           );
         }
         return Response.json({ ok: true }, { status: 202 });
+      }
+
+      if (parts.length === 3 && req.method === "PATCH") {
+        const body = await readJson<{ title?: unknown }>(req);
+        if (typeof body.title !== "string" || body.title.trim().length === 0) {
+          return Response.json({ error: "title must be a non-empty string" }, { status: 400 });
+        }
+        const title = body.title.trim().slice(0, 120);
+        await saveSessionTitle(id, title);
+        return Response.json({ ok: true, title });
       }
 
       if (parts.length === 3 && req.method === "DELETE") {

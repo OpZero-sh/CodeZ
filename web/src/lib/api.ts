@@ -135,6 +135,11 @@ export const api = {
       `/api/sessions/${id}/fork`,
       { method: "POST", body: JSON.stringify({ slug }) },
     ),
+  renameSession: (id: string, title: string) =>
+    req<{ ok: true; title: string }>(`/api/sessions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    }),
   abort: (id: string) =>
     req<void>(`/api/sessions/${id}/abort`, { method: "POST" }),
   dispose: (id: string) =>

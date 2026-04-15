@@ -12,6 +12,7 @@ import type {
   ToolUsePart,
 } from "../types";
 import { claudeProjectsRoot, decodeProjectSlug } from "./paths";
+import { loadSessionTitles } from "./session-titles";
 
 export { decodeProjectSlug, encodeProjectSlug } from "./paths";
 
@@ -379,6 +380,13 @@ function extractUserText(content: unknown): string | null {
   return null;
 }
 
+function sanitizeTitle(raw: string): string | null {
+  let text = raw.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  text = text.replace(/^\/\S+\s*/, "");
+  if (!text) return null;
+  return text.slice(0, 80);
+}
+
 export async function listSessionsForProject(slug: string): Promise<Session[]> {
   if (!slug.startsWith("-")) return [];
   const root = claudeProjectsRoot();
@@ -424,8 +432,11 @@ export async function listSessionsForProject(slug: string): Promise<Session[]> {
       if (!foundTitle && rec.type === "user" && rec.message?.role === "user") {
         const text = extractUserText(rec.message.content);
         if (text) {
-          title = text.replace(/\s+/g, " ").trim().slice(0, 60);
-          foundTitle = true;
+          const cleaned = sanitizeTitle(text);
+          if (cleaned) {
+            title = cleaned;
+            foundTitle = true;
+          }
         }
       }
     }
@@ -440,6 +451,11 @@ export async function listSessionsForProject(slug: string): Promise<Session[]> {
       lastMessageAt: st.mtimeMs,
       metadata: finalizeMetadata(collector),
     });
+  }
+  const customTitles = await loadSessionTitles();
+  for (const s of sessions) {
+    const custom = customTitles[s.id];
+    if (custom) s.title = custom;
   }
   sessions.sort((a, b) => b.updatedAt - a.updatedAt);
   return sessions;

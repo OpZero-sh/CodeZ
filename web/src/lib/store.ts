@@ -25,6 +25,8 @@ export interface UsageTotal {
   totalDurationMs: number;
 }
 
+export type SidebarSort = "recent" | "status" | "name";
+
 export interface StoreState {
   projects: Project[];
   sessionsByProject: Record<string, Session[]>;
@@ -39,6 +41,8 @@ export interface StoreState {
   markers: Record<string, Marker[]>;
   runningTasks: RunningTask[];
   mcpCalls: McpToolCall[];
+  sidebarSort: SidebarSort;
+  hideEmptyProjects: boolean;
 }
 
 type Listener = () => void;
@@ -57,6 +61,8 @@ let state: StoreState = {
   markers: {},
   runningTasks: [],
   mcpCalls: [],
+  sidebarSort: "recent",
+  hideEmptyProjects: true,
 };
 
 const listeners = new Set<Listener>();
@@ -429,6 +435,34 @@ export const store = {
         },
       });
     }
+  },
+
+  async renameSession(sessionId: string, title: string) {
+    const nextByProject: Record<string, Session[]> = {};
+    for (const [slug, list] of Object.entries(state.sessionsByProject)) {
+      nextByProject[slug] = list.map((s) =>
+        s.id === sessionId ? { ...s, title } : s,
+      );
+    }
+    setState({ sessionsByProject: nextByProject });
+    try {
+      await api.renameSession(sessionId, title);
+    } catch (err) {
+      setState({
+        errors: {
+          ...state.errors,
+          [`rename:${sessionId}`]: (err as Error).message,
+        },
+      });
+    }
+  },
+
+  setSidebarSort(sort: SidebarSort) {
+    setState({ sidebarSort: sort });
+  },
+
+  setHideEmptyProjects(hide: boolean) {
+    setState({ hideEmptyProjects: hide });
   },
 
   setConnected(connected: boolean) {

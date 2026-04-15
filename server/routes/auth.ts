@@ -71,6 +71,15 @@ function resetFailures(ip: string): void {
 // Handlers
 // ---------------------------------------------------------------------------
 
+function isSecureRequest(req: Request): boolean {
+  if (req.headers.get("x-forwarded-proto") === "https") return true;
+  try {
+    return new URL(req.url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 async function handleLogin(req: Request, config: Config): Promise<Response> {
   const ip = clientIp(req);
   if (isRateLimited(ip)) {
@@ -113,15 +122,15 @@ async function handleLogin(req: Request, config: Config): Promise<Response> {
     { user: { sub: config.auth.username } },
     {
       status: 200,
-      headers: { "Set-Cookie": buildSessionCookie(token) },
+      headers: { "Set-Cookie": buildSessionCookie(token, isSecureRequest(req)) },
     },
   );
 }
 
-function handleLogout(): Response {
+function handleLogout(req: Request): Response {
   return new Response(null, {
     status: 204,
-    headers: { "Set-Cookie": buildClearSessionCookie() },
+    headers: { "Set-Cookie": buildClearSessionCookie(isSecureRequest(req)) },
   });
 }
 
@@ -152,7 +161,7 @@ export async function authRoutes(
     return handleLogin(req, config);
   }
   if (pathname === "/api/auth/logout" && req.method === "POST") {
-    return handleLogout();
+    return handleLogout(req);
   }
   if (pathname === "/api/auth/me" && req.method === "GET") {
     return handleMe(req, provider);
