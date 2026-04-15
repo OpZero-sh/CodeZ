@@ -19,7 +19,7 @@ export interface Config {
   authSecret: string;
   loopbackBypass: boolean;
   /** Auth provider to use. Default is cookie-based form auth. */
-  authProvider?: "cookie" | "cf-access";
+  authProvider?: "cookie" | "cf-access" | "authkit";
 }
 
 const DEFAULT_HOST = "127.0.0.1";

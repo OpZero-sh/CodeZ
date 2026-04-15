@@ -1,5 +1,6 @@
 import { loadConfig } from "./config";
 import { createCookieAuthProvider, createCloudflareAccessAuthProvider, withAuth } from "./auth";
+import { createAuthKitAuthProvider, handleAuthKitLogin, handleAuthKitCallback } from "./auth-authkit";
 import { serveStatic } from "./static";
 import { EventBus } from "./bus";
 import { healthRoute, healthDetailsRoute, restartRoute, setSelfHeal, setShutdownFn } from "./routes/health";
@@ -22,7 +23,9 @@ import type { HubMachineAgent } from "../../codez-hub/client/agent";
 const config = await loadConfig();
 const authProvider = config.authProvider === "cf-access"
   ? createCloudflareAccessAuthProvider()
-  : createCookieAuthProvider(config);
+  : config.authProvider === "authkit"
+    ? createAuthKitAuthProvider(config)
+    : createCookieAuthProvider(config);
 const bus = new EventBus();
 initMcpTransport(bus);
 const pool = new SessionPool(bus);
@@ -42,6 +45,10 @@ const server = Bun.serve({
     if (authed instanceof Response) return authed;
 
     if (url.pathname === "/api/auth" || url.pathname.startsWith("/api/auth/")) {
+      if (config.authProvider === "authkit") {
+        if (url.pathname === "/api/auth/login") return handleAuthKitLogin(req);
+        if (url.pathname === "/api/auth/callback") return handleAuthKitCallback(req, config);
+      }
       return authRoutes(req, config, authProvider);
     }
 
