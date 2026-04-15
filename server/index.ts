@@ -45,6 +45,10 @@ const server = Bun.serve({
     if (authed instanceof Response) return authed;
 
     if (url.pathname === "/api/auth" || url.pathname.startsWith("/api/auth/")) {
+      if (url.pathname === "/api/auth/provider") {
+        return Response.json({ provider: config.authProvider ?? "cookie" });
+      }
+      // AuthKit OAuth flow intercepts login/callback before legacy auth routes
       if (config.authProvider === "authkit") {
         if (url.pathname === "/api/auth/login") return handleAuthKitLogin(req);
         if (url.pathname === "/api/auth/callback") return handleAuthKitCallback(req, config);

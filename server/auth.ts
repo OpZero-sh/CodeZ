@@ -461,10 +461,12 @@ function isPublicPath(pathname: string): boolean {
   ) {
     return true;
   }
-  // Auth routes handle their own flow.
+  // Auth routes handle their own flow (login, callback, provider, me, logout).
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
   // Health endpoint — cheap liveness probe, safe to expose.
   if (pathname === "/api/health") return true;
+  // SSE events — consumed by Hub machine agent over loopback.
+  if (pathname === "/api/events") return true;
   // UAT test runner endpoint — for running browser tests.
   if (pathname === "/api/uat/run") return true;
   // UAT screenshots directory

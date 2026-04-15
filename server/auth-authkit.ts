@@ -105,7 +105,8 @@ function isSecureRequest(req: Request): boolean {
 }
 
 /**
- * Handle /api/auth/login — redirect to MCPAuthKit authorize endpoint
+ * Handle /api/auth/login — redirect to MCPAuthKit authorize endpoint.
+ * GET: browser redirect (302). POST: return JSON with redirect URL (for SPA).
  */
 export async function handleAuthKitLogin(req: Request): Promise<Response> {
   cleanExpiredFlows();
@@ -135,7 +136,15 @@ export async function handleAuthKitLogin(req: Request): Promise<Response> {
   // Store clientId with the flow so we can use it in the callback
   (pendingFlows.get(state) as any).clientId = clientId;
 
-  return Response.redirect(authorizeUrl.toString(), 302);
+  const url = authorizeUrl.toString();
+
+  // POST from SPA → return JSON so the client can do window.location redirect
+  if (req.method === "POST") {
+    return Response.json({ redirect: url });
+  }
+
+  // GET from browser → standard 302
+  return Response.redirect(url, 302);
 }
 
 /**

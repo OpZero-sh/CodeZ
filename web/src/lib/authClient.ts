@@ -23,7 +23,22 @@ async function readErrorMessage(res: Response): Promise<string> {
 export const authApi = {
   async me(): Promise<AuthUser | null> {
     const r = await fetch("/api/auth/me", { credentials: "include" });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      // Check if server uses OAuth (authkit) — if so, redirect directly
+      try {
+        const info = await fetch("/api/auth/provider");
+        if (info.ok) {
+          const j = (await info.json()) as { provider?: string };
+          if (j.provider === "authkit") {
+            window.location.href = "/api/auth/login";
+            return new Promise(() => {}); // never resolves, page navigates
+          }
+        }
+      } catch {
+        // Fall through to show login form
+      }
+      return null;
+    }
     const j = (await r.json()) as { user?: AuthUser };
     return j.user ?? null;
   },
@@ -35,6 +50,22 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
+
+    // AuthKit OAuth mode: server returns a redirect URL
+    if (r.ok) {
+      try {
+        const j = (await r.clone().json()) as { redirect?: string; user?: AuthUser };
+        if (j.redirect) {
+          window.location.href = j.redirect;
+          // Never resolves — page navigates away
+          return new Promise(() => {});
+        }
+        if (j.user) return j.user;
+      } catch {
+        // Not JSON, fall through
+      }
+    }
+
     if (!r.ok) {
       const message = await readErrorMessage(r);
       if (r.status === 429) {
