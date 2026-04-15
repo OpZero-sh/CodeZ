@@ -16,6 +16,8 @@ import { mcpPrmRoute, mcpTransportRoute, stopMcpPoller, initMcpTransport } from 
 import { SessionPool } from "./claude/pool";
 import { ChannelBridgePool } from "./claude/channel-bridge";
 import { SelfHeal } from "./self-heal";
+import { loadHubConfig, startHubAgent } from "./hub";
+import type { HubMachineAgent } from "../../codez-hub/client/agent";
 
 const config = await loadConfig();
 const authProvider = config.authProvider === "cf-access"
@@ -81,6 +83,21 @@ console.log(
 
 bus.emit({ type: "server.connected" });
 
+let hubAgent: HubMachineAgent | null = null;
+loadHubConfig().then(async (hubConfig) => {
+  if (!hubConfig) {
+    console.log("[hub] no hub config found (set CODEZ_HUB_URL + CODEZ_HUB_TOKEN to enable)");
+    return;
+  }
+  try {
+    hubAgent = await startHubAgent(hubConfig, config, pool, bus);
+  } catch (err) {
+    console.error("[hub] failed to connect:", err instanceof Error ? err.message : err);
+  }
+}).catch((err) => {
+  console.error("[hub] startup error:", err);
+});
+
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
@@ -88,6 +105,10 @@ async function shutdown(signal: string): Promise<void> {
   console.log(`[opzero-claude] ${signal} received, shutting down`);
   selfHeal.stop();
   stopMcpPoller();
+  if (hubAgent) {
+    hubAgent.disconnect();
+    hubAgent = null;
+  }
   try {
     await pool.disposeAll();
   } catch (err) {
