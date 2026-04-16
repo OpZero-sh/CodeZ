@@ -111,12 +111,13 @@ async function refreshAccessToken(
   if (!res.ok) return null;
   const body = (await res.json()) as {
     access_token: string;
-    refresh_token: string;
+    refresh_token?: string;
     expires_in: number;
   };
   return {
     accessToken: body.access_token,
-    refreshToken: body.refresh_token,
+    // Use rotated refresh token if returned, otherwise keep the old one
+    refreshToken: body.refresh_token ?? refreshToken,
     expiresIn: body.expires_in,
   };
 }
