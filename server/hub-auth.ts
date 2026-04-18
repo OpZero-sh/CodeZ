@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 
-const AUTHKIT_URL = "https://authkit.open0p.com";
+const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://authkit.open0p.com";
 const SCOPES = "mcp:tools agent:ws";
 const AUTH_FILE = join(
   process.env.HOME ?? "/root",
