@@ -364,7 +364,15 @@ export async function getAccessToken(): Promise<string> {
     console.log("[hub-auth] refresh failed, re-authenticating...");
   }
 
-  // No stored token or refresh failed — full login
+  // No stored token or refresh failed — full interactive login.
+  // Skip in container / non-TTY environments where opening a browser and
+  // waiting on a loopback callback can't work and will hang forever.
+  if (process.env.CODEZ_HEADLESS === "1" || !process.stdin.isTTY) {
+    throw new Error(
+      "hub-auth: no valid stored credentials and interactive login is unavailable (non-TTY / CODEZ_HEADLESS=1). Provide CODEZ_HUB_TOKEN, HUB_AUTH_JSON, or HUB_EMAIL+HUB_PASSWORD.",
+    );
+  }
+
   const auth = await login();
   return auth.accessToken;
 }
