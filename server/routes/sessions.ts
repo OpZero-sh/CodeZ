@@ -7,6 +7,7 @@ import {
 } from "../claude/history";
 import { claudeProjectsRoot } from "../claude/paths";
 import { saveSessionTitle } from "../claude/session-titles";
+import { getConfigDir } from "../config";
 import {
   readChannelDiscovery,
   injectToChannel,
@@ -187,7 +188,7 @@ export async function sessionsRoutes(
         if (!fileBuffer) {
           return Response.json({ error: "no file in request" }, { status: 400 });
         }
-        const uploadsDir = join(process.env.HOME ?? "/root", ".config/opzero-claude/uploads", id);
+        const uploadsDir = join(getConfigDir(), "uploads", id);
         await mkdir(uploadsDir, { recursive: true });
         const fileId = crypto.randomUUID();
         const ext = fileName.includes(".") ? fileName.split(".").pop() : "";

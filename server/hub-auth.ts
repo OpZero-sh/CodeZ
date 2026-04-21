@@ -1,28 +1,38 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
+import { getConfigDir } from "./config";
 
 const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://authkit.open0p.com";
 const SCOPES = "mcp:tools agent:ws";
 
-export const AUTH_FILE_PATH = join(
-  process.env.HOME ?? "/root",
-  ".config",
-  "opzero-claude",
-  "hub-auth.json",
-);
-const AUTH_FILE = join(
-  process.env.HOME ?? "/root",
-  ".config",
-  "opzero-claude",
-  "hub-auth.json",
-);
+function authFilePath(): string {
+  return join(getConfigDir(), "hub-auth.json");
+}
+
+export const AUTH_FILE_PATH = authFilePath();
 
 export interface StoredAuth {
   clientId: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
+  /** Email used to provision the machine agent (noninteractive flows). */
+  email?: string;
+  /** Plaintext password generated on first provisioning. Persisted so that
+   * the creds can be recovered after the one-time setup banner is lost. */
+  agentPassword?: string;
+}
+
+export interface StoredCredentials {
+  email: string;
+  agentPassword: string;
+}
+
+export async function readStoredCredentials(): Promise<StoredCredentials | null> {
+  const stored = await loadStoredAuth();
+  if (!stored || !stored.email || !stored.agentPassword) return null;
+  return { email: stored.email, agentPassword: stored.agentPassword };
 }
 
 export async function readStoredAuth(): Promise<StoredAuth | null> {
@@ -31,7 +41,7 @@ export async function readStoredAuth(): Promise<StoredAuth | null> {
 
 async function loadStoredAuth(): Promise<StoredAuth | null> {
   try {
-    const raw = await readFile(AUTH_FILE, "utf-8");
+    const raw = await readFile(authFilePath(), "utf-8");
     const data = JSON.parse(raw) as StoredAuth;
     if (data.clientId && data.accessToken && data.refreshToken) return data;
     return null;
@@ -41,8 +51,9 @@ async function loadStoredAuth(): Promise<StoredAuth | null> {
 }
 
 async function saveAuth(auth: StoredAuth): Promise<void> {
-  await mkdir(dirname(AUTH_FILE), { recursive: true });
-  await writeFile(AUTH_FILE, JSON.stringify(auth, null, 2) + "\n", { mode: 0o600 });
+  const path = authFilePath();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(auth, null, 2) + "\n", { mode: 0o600 });
 }
 
 function base64url(buf: Buffer): string {
@@ -307,6 +318,8 @@ export async function loginHeadless(
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     expiresAt: Date.now() + tokens.expiresIn * 1000,
+    email: opts.email,
+    agentPassword: opts.password,
   };
   await saveAuth(auth);
 
@@ -340,6 +353,8 @@ export async function getAccessToken(): Promise<string> {
         accessToken: refreshed.accessToken,
         refreshToken: refreshed.refreshToken,
         expiresAt: Date.now() + refreshed.expiresIn * 1000,
+        ...(stored.email ? { email: stored.email } : {}),
+        ...(stored.agentPassword ? { agentPassword: stored.agentPassword } : {}),
       };
       await saveAuth(updated);
       console.log("[hub-auth] token refreshed");

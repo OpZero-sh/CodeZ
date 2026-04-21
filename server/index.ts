@@ -97,7 +97,7 @@ bus.emit({ type: "server.connected" });
 let hubAgent: HubMachineAgent | null = null;
 loadHubConfig().then(async (hubConfig) => {
   if (!hubConfig) {
-    console.log("[hub] no hub config found (set CODEZ_HUB_URL + CODEZ_HUB_TOKEN to enable)");
+    console.warn("[hub] skipping — no credentials configured (run 'codez hub login')");
     return;
   }
   try {

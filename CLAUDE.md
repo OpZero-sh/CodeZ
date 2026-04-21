@@ -3,6 +3,15 @@
 Product name: **CodeZ**. Package / repo / on-disk name: `opzero-claude`
 (unchanged to avoid breaking things — only the UI-visible brand changes).
 
+## Getting started
+
+For fresh installs, run `codez setup`. It handles deps, build, hub auth,
+MCP registration, and autostart. The command is idempotent — re-running
+after a partial failure picks up where it left off. Config lives at
+`~/.config/opzero-code/` on fresh installs; existing users on
+`~/.config/opzero-claude/` continue to work unchanged, and
+`codez config migrate` performs a non-destructive copy to the new path.
+
 A web UI for driving Claude Code sessions remotely. Single Bun HTTP server
 serves a React 19 SPA at `/` and a `/api/*` surface the SPA talks to. The
 server spawns the `claude` CLI in stream-json duplex mode for sessions it

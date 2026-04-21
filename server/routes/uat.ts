@@ -1,6 +1,6 @@
 import { join } from "path";
 import { existsSync } from "fs";
-import { Config } from "../config";
+import { Config, getConfigDir } from "../config";
 
 export interface UatStep {
   action: "navigate" | "click" | "fill" | "wait" | "snapshot" | "screenshot";
@@ -70,8 +70,7 @@ function isAgentBrowserInstalled(): boolean {
 }
 
 function getScreenshotsDir(): string {
-  const home = process.env.HOME || process.env.USERPROFILE || "";
-  return join(home, ".config", "opzero-claude", "uat-screenshots");
+  return join(getConfigDir(), "uat-screenshots");
 }
 
 export async function uatRunRoute(

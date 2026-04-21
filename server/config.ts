@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export interface Config {
@@ -27,11 +28,36 @@ export interface Config {
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 4097;
 
-function configPath(): string {
+const NEW_DIR_NAME = "opzero-code";
+const LEGACY_DIR_NAME = "opzero-claude";
+
+/**
+ * Resolve the user's config dir with a non-breaking migration:
+ *   1. $CODEZERO_CONFIG_DIR wins.
+ *   2. ~/.config/opzero-code/ if it already exists (new default).
+ *   3. ~/.config/opzero-claude/ for backward compat if it exists.
+ *   4. ~/.config/opzero-code/ as the first-run default.
+ */
+export function getConfigDir(): string {
+  const envDir = process.env.CODEZERO_CONFIG_DIR;
+  if (envDir) return envDir;
   const home = process.env.HOME ?? homedir();
+  const newDir = join(home, ".config", NEW_DIR_NAME);
+  const legacyDir = join(home, ".config", LEGACY_DIR_NAME);
+  if (existsSync(newDir)) return newDir;
+  if (existsSync(legacyDir)) return legacyDir;
+  return newDir;
+}
+
+export function getLegacyConfigDir(): string {
+  const home = process.env.HOME ?? homedir();
+  return join(home, ".config", LEGACY_DIR_NAME);
+}
+
+function configPath(): string {
   const envPath = process.env.CODEZERO_CONFIG_PATH;
   if (envPath) return envPath;
-  return join(home, ".config", "opzero-claude", "config.json");
+  return join(getConfigDir(), "config.json");
 }
 
 function randomHex(bytes: number): string {

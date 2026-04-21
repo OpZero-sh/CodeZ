@@ -23,6 +23,7 @@ Commands:
   hub login         Run headless hub OAuth login
   hub status        Print hub auth + connectivity
   config show       Print the effective config (redacted)
+  config migrate    Copy ~/.config/opzero-claude → ~/.config/opzero-code (non-destructive)
   version           Show version
   help              Show this message
 `);
@@ -84,6 +85,60 @@ function redactSecret(s: string | undefined): string {
   return `${s.slice(0, 4)}…${s.slice(-4)}`;
 }
 
+async function cmdConfigMigrate(): Promise<void> {
+  const { getConfigDir, getLegacyConfigDir } = await import("../server/config");
+  const { readdir, mkdir, copyFile, stat } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const { existsSync } = await import("node:fs");
+
+  const legacy = getLegacyConfigDir();
+  // Force the new path regardless of what getConfigDir() currently resolves to.
+  const { homedir } = await import("node:os");
+  const home = process.env.HOME ?? homedir();
+  const target = join(home, ".config", "opzero-code");
+
+  console.log(`[migrate] from: ${legacy}`);
+  console.log(`[migrate] to:   ${target}`);
+
+  if (!existsSync(legacy)) {
+    console.log("[migrate] legacy dir does not exist; nothing to do");
+    console.log(`[migrate] active config dir: ${getConfigDir()}`);
+    return;
+  }
+
+  if (existsSync(target)) {
+    const entries = await readdir(target);
+    if (entries.length > 0) {
+      console.log(`[migrate] target not empty (${entries.length} entries); refusing to overwrite. Nothing copied.`);
+      console.log(`[migrate] active config dir: ${getConfigDir()}`);
+      return;
+    }
+  } else {
+    await mkdir(target, { recursive: true });
+  }
+
+  const entries = await readdir(legacy);
+  const copied: string[] = [];
+  for (const name of entries) {
+    const src = join(legacy, name);
+    const dst = join(target, name);
+    const info = await stat(src);
+    if (info.isFile()) {
+      await copyFile(src, dst);
+      copied.push(name);
+    }
+    // Skip nested dirs for now; surface them to the user.
+    if (info.isDirectory()) {
+      console.log(`[migrate] skipping directory (copy manually if needed): ${name}`);
+    }
+  }
+
+  console.log(`[migrate] copied ${copied.length} file(s):`);
+  for (const name of copied) console.log(`  ${name}`);
+  console.log(`[migrate] legacy dir retained at ${legacy} (not deleted).`);
+  console.log(`[migrate] active config dir: ${getConfigDir()}`);
+}
+
 async function cmdConfigShow(): Promise<void> {
   const { loadConfig, getConfigPath } = await import("../server/config");
   const cfg = await loadConfig();
@@ -126,6 +181,7 @@ async function main(): Promise<void> {
         return;
       case "config":
         if (sub === "show") return await cmdConfigShow();
+        if (sub === "migrate") return await cmdConfigMigrate();
         console.error(`Unknown config subcommand: ${sub ?? "(none)"}`);
         process.exit(1);
         return;

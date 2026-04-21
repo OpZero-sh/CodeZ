@@ -1,12 +1,11 @@
 import { hostname, platform } from "node:os";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadConfig, saveConfig, getConfigPath } from "../server/config";
-import { loginHeadless, readStoredAuth, AUTH_FILE_PATH } from "../server/hub-auth";
+import { loadConfig, saveConfig, getConfigPath, getConfigDir } from "../server/config";
+import { loginHeadless, readStoredAuth, readStoredCredentials, AUTH_FILE_PATH } from "../server/hub-auth";
 
 export interface SetupOptions {
   skipHub: boolean;
@@ -20,6 +19,16 @@ const DEFAULT_HUB_URL = "https://code.open0p.com";
 const DEFAULT_AUTHKIT_URL = "https://authkit.open0p.com";
 const HEALTH_URL = "http://127.0.0.1:4097/api/health";
 const HEALTH_DETAILS_URL = "http://127.0.0.1:4097/api/health/details";
+
+// Distinct exit codes so CI/agents can detect which step failed.
+const EXIT_PREFLIGHT = 10;
+const EXIT_INSTALL = 11;
+const EXIT_CONFIG = 12;
+const EXIT_HUB = 13;
+const EXIT_HUBURL = 14;
+const EXIT_MCP = 15;
+const EXIT_AUTOSTART = 16;
+const EXIT_START = 17;
 
 function repoRoot(): string {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -98,15 +107,20 @@ async function refreshTokenExpired(auth: { expiresAt: number }): Promise<boolean
   return auth.expiresAt < Date.now() - 7 * 24 * 60 * 60 * 1000;
 }
 
-async function ensureHubAuth(): Promise<void> {
+async function ensureHubAuth(): Promise<{ provisioned: boolean; email?: string }> {
   if (process.env.CODEZ_HUB_TOKEN) {
     console.log("[setup] CODEZ_HUB_TOKEN env present; skipping OAuth");
-    return;
+    return { provisioned: false };
   }
   const stored = await readStoredAuth();
   if (stored && stored.refreshToken && !(await refreshTokenExpired(stored))) {
-    console.log(`[setup] hub auth already provisioned at ${AUTH_FILE_PATH}`);
-    return;
+    const existing = await readStoredCredentials();
+    if (existing) {
+      console.log(`[setup] ✓ hub agent already provisioned (email: ${existing.email})`);
+    } else {
+      console.log(`[setup] hub auth already provisioned at ${AUTH_FILE_PATH}`);
+    }
+    return { provisioned: false, email: existing?.email };
   }
 
   const email = process.env.HUB_EMAIL ?? `opz-${hostname()}@opzero.local`;
@@ -122,8 +136,10 @@ async function ensureHubAuth(): Promise<void> {
     `  email:    ${result.email}`,
     `  password: ${result.password}`,
     "",
-    "Save these. They will not be printed again.",
+    `Saved to ${AUTH_FILE_PATH} (mode 0600). Back this file up.`,
+    "Raw creds are now persisted in the auth file; recovery is local.",
   ]);
+  return { provisioned: true, email: result.email };
 }
 
 async function persistHubUrl(): Promise<void> {
@@ -134,7 +150,18 @@ async function persistHubUrl(): Promise<void> {
   console.log(`[setup] persisted hubUrl=${cfg.hubUrl} to ${getConfigPath()}`);
 }
 
+async function isMcpAlreadyRegistered(): Promise<boolean> {
+  const list = await runCapture("claude", ["mcp", "list"]);
+  if (list.code !== 0) return false;
+  // match line starting with 'codez' (name), tolerant of whitespace/colon
+  return /^\s*codez(\s|:)/m.test(list.stdout);
+}
+
 async function registerMcp(): Promise<void> {
+  if (await isMcpAlreadyRegistered()) {
+    console.log("[setup] claude mcp: 'codez' already registered");
+    return;
+  }
   console.log("[setup] registering MCP bridge with Claude Code");
   const r = await runCapture("claude", [
     "mcp", "add", "--scope", "user", "codez", "--", "http", "http://127.0.0.1:4097/mcp",
@@ -215,46 +242,81 @@ async function poll(url: string, ok: (body: unknown) => boolean, timeoutMs: numb
   return false;
 }
 
+async function step<T>(label: string, exitCode: number, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error(`[setup] step ${label} failed: ${reason}. Re-run 'codez setup' to retry.`);
+    process.exit(exitCode);
+  }
+}
+
 export async function runSetup(opts: SetupOptions): Promise<void> {
   const root = repoRoot();
   const hubUrl = process.env.CODEZ_HUB_URL ?? DEFAULT_HUB_URL;
+  const done: string[] = [];
 
-  const { hasClaude } = await preflight(hubUrl, opts.skipHub);
+  const { hasClaude } = await step("preflight", EXIT_PREFLIGHT, () =>
+    preflight(hubUrl, opts.skipHub),
+  );
+  done.push("preflight");
 
-  await installDepsAndBuild(root);
+  await step("install+build", EXIT_INSTALL, () => installDepsAndBuild(root));
+  done.push("install+build");
 
   // triggers first-run banner if needed
-  await loadConfig();
+  await step("config", EXIT_CONFIG, async () => {
+    await loadConfig();
+  });
+  done.push(`config (${getConfigDir()})`);
 
   if (!opts.skipHub) {
-    await ensureHubAuth();
-    await persistHubUrl();
+    const hubResult = await step("hub-auth", EXIT_HUB, () => ensureHubAuth());
+    done.push(hubResult.provisioned ? "hub-auth (provisioned)" : "hub-auth (existing)");
+    await step("hub-url", EXIT_HUBURL, () => persistHubUrl());
+    done.push("hub-url");
+  } else {
+    done.push("hub: skipped");
   }
 
   if (!opts.skipMcp && hasClaude) {
-    await registerMcp();
+    await step("mcp", EXIT_MCP, () => registerMcp());
+    done.push("mcp registered");
+  } else if (opts.skipMcp) {
+    done.push("mcp: skipped");
+  } else {
+    done.push("mcp: skipped (claude not in PATH)");
   }
 
   if (!opts.skipAutostart) {
-    await installAutostart(root);
+    await step("autostart", EXIT_AUTOSTART, () => installAutostart(root));
+    done.push("autostart installed");
+  } else {
+    done.push("autostart: skipped");
   }
 
   if (!opts.noStart) {
-    await startServer(root);
-    console.log("[setup] waiting for server health...");
-    const up = await poll(HEALTH_URL, () => true, 30_000);
-    if (!up) {
-      console.warn("[setup] server did not become healthy within 30s");
-    } else {
-      console.log("[setup] server healthy");
-      if (!opts.skipHub) {
-        const hubUp = await poll(HEALTH_DETAILS_URL, (b) => {
-          const body = b as { hub?: { connected?: boolean } };
-          return body?.hub?.connected === true;
-        }, 15_000);
-        console.log(hubUp ? "[setup] hub connected" : "[setup] hub not yet connected (will retry in background)");
+    await step("start", EXIT_START, async () => {
+      await startServer(root);
+      console.log("[setup] waiting for server health...");
+      const up = await poll(HEALTH_URL, () => true, 30_000);
+      if (!up) {
+        console.warn("[setup] server did not become healthy within 30s");
+      } else {
+        console.log("[setup] server healthy");
+        if (!opts.skipHub) {
+          const hubUp = await poll(HEALTH_DETAILS_URL, (b) => {
+            const body = b as { hub?: { connected?: boolean } };
+            return body?.hub?.connected === true;
+          }, 15_000);
+          console.log(hubUp ? "[setup] hub connected" : "[setup] hub not yet connected (will retry in background)");
+        }
       }
-    }
+    });
+    done.push("server started");
+  } else {
+    done.push("start: skipped");
   }
 
   banner([
@@ -264,7 +326,8 @@ export async function runSetup(opts: SetupOptions): Promise<void> {
     `  server:  http://127.0.0.1:4097`,
     `  mcp:     http://127.0.0.1:4097/mcp`,
     opts.skipHub ? "  hub:     skipped" : `  hub:     ${hubUrl}`,
+    "",
+    "Completed steps:",
+    ...done.map((s) => `  [x] ${s}`),
   ]);
-  // unused import guard
-  void readFile;
 }
