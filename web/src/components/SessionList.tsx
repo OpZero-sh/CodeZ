@@ -423,7 +423,7 @@ function NewSessionDialog({ projects, defaultSlug }: NewSessionDialogProps) {
               className="w-full h-9 px-3 rounded-md bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Default</option>
-              <option value="acceptedits">Accept Edits</option>
+              <option value="acceptEdits">Accept Edits</option>
               <option value="auto">Auto</option>
               <option value="bypassPermissions">Bypass Permissions</option>
               <option value="dontAsk">Don&apos;t Ask</option>
