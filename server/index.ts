@@ -18,7 +18,7 @@ import { SessionPool } from "./claude/pool";
 import { ChannelBridgePool } from "./claude/channel-bridge";
 import { SelfHeal } from "./self-heal";
 import { loadHubConfig, startHubAgent } from "./hub";
-import type { HubMachineAgent } from "../../codez-hub/client/agent";
+import type { HubMachineAgent } from "@opzero/codez-hub-client";
 
 const config = await loadConfig();
 const authProvider = config.authProvider === "cf-access"

@@ -41,14 +41,18 @@ Restart Claude Code. The 17 CodeZ tools will appear in your tool list.
 
 ### Remote (over the internet)
 
-Remote connections require an OAuth token from your MCPAuthKit instance.
-Claude Code handles the OAuth flow automatically when configured:
+The recommended remote path is **through the CodeZ Hub**, not a direct tunnel
+to this machine. After `codez setup`, this machine registers as a machine agent
+with `https://code.open0p.com`, and any MCP client that talks to the hub can
+reach it.
+
+To point Claude Code at the hub:
 
 ```json
 {
   "codez": {
     "type": "http",
-    "url": "https://your-codez-domain.com/mcp"
+    "url": "https://code.open0p.com/mcp"
   }
 }
 ```
@@ -56,13 +60,16 @@ Claude Code handles the OAuth flow automatically when configured:
 On first use, Claude Code will:
 
 1. Discover the Protected Resource Metadata at
-   `https://your-codez-domain.com/.well-known/oauth-protected-resource`
-2. Find the authorization server (your MCPAuthKit instance)
+   `https://code.open0p.com/.well-known/oauth-protected-resource`
+2. Find the authorization server (MCPAuthKit at `authkit.open0p.com`)
 3. Open a browser window for OAuth consent
 4. Exchange the authorization code for an access token
 5. Use the token for all subsequent requests (auto-refreshes)
 
-No manual token management required.
+The hub fans the calls out to any machine this user has provisioned.
+
+If you truly want direct access to one machine, expose `:4097` via Cloudflare
+Tunnel and point the MCP URL at that hostname instead — same protocol, no hub.
 
 ## Connect from a custom agent
 

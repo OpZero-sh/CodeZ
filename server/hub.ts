@@ -1,14 +1,21 @@
 import { hostname, arch, cpus, totalmem, platform } from "node:os";
 import { readdir, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { HubMachineAgent } from "../../codez-hub/client/agent";
-import type { HubAgentConfig, CommandHandler } from "../../codez-hub/client/types";
-import type { RepoInfo, SessionInfo } from "../../codez-hub/src/protocol/types";
+import {
+  HubMachineAgent,
+  type HubAgentConfig,
+  type CommandHandler,
+  type RepoInfo,
+  type SessionInfo,
+} from "@opzero/codez-hub-client";
 import type { SessionPool } from "./claude/pool";
 import type { EventBus } from "./bus";
 import { listProjects, listSessionsForProject } from "./claude/history";
 import type { Config } from "./config";
+import { loadConfig } from "./config";
 import { getAccessToken, createTokenRefresher } from "./hub-auth";
+
+const DEFAULT_HUB_URL = "https://code.open0p.com";
 
 export interface HubConfig {
   url: string;
@@ -23,8 +30,16 @@ const TOKEN_PATH = join(
 );
 
 export async function loadHubConfig(): Promise<HubConfig | null> {
-  const url = process.env.CODEZ_HUB_URL;
-  if (!url) return null;
+  let url = process.env.CODEZ_HUB_URL;
+  if (!url) {
+    try {
+      const cfg = await loadConfig();
+      url = cfg.hubUrl;
+    } catch {
+      // fall through
+    }
+  }
+  if (!url) url = DEFAULT_HUB_URL;
 
   // Priority: env var > OAuth flow > token file
   let token = process.env.CODEZ_HUB_TOKEN;

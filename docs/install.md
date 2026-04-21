@@ -1,130 +1,87 @@
 # CodeZ Installation Guide
 
-## Docker (Recommended)
+The supported path is `codez setup`. It is idempotent, noninteractive by
+default, and does everything from dependency install to autostart.
+
+## One-shot install
 
 ```bash
-# Build and run
+# Clone and enter the repo, then:
+codez setup
+```
+
+Behind the scenes, `codez setup`:
+
+1. Verifies `bun` and (softly) `claude` are on PATH.
+2. Runs `bun install` at root and `web/`, then `bun run build`.
+3. Generates or reuses `~/.config/opzero-claude/config.json` (first-run
+   password + authSecret).
+4. Provisions a headless hub machine agent via MCPAuthKit PKCE (skippable
+   with `--skip-hub`).
+5. Persists `hubUrl` into the config (default `https://code.open0p.com`).
+6. Registers the local MCP bridge with Claude Code via
+   `claude mcp add --scope user codez -- http http://127.0.0.1:4097/mcp`
+   (skippable with `--skip-mcp`).
+7. Installs an autostart unit — `launchd` on macOS, user `systemd` on Linux
+   (skippable with `--skip-autostart`).
+8. Starts the server and polls `/api/health` (skippable with `--no-start`).
+
+Flags are presence-only; all defaults assume a desktop install against the
+production hub.
+
+## Docker
+
+```bash
 docker build -t codez .
-docker run -d -p 4097:4097 -v ~/.config/opzero-claude:/root/.config/opzero-claude --restart unless-stopped codez
-
-# Or with docker-compose
-docker-compose up -d
+docker run -d -p 4097:4097 \
+  -v ~/.config/opzero-claude:/root/.config/opzero-claude \
+  --restart unless-stopped codez
 ```
 
-## bunx
+The container's first boot runs `codez setup --no-start --skip-autostart`
+against the mounted config dir, then execs the server. Provide
+`HUB_EMAIL` / `HUB_PASSWORD` / `CODEZ_HUB_TOKEN` via `-e` as needed.
+
+## Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CODEZERO_PORT` | `4097` | Server port |
+| `CODEZERO_HOST` | `127.0.0.1` | Server host |
+| `CODEZERO_CONFIG_PATH` | `~/.config/opzero-claude/config.json` | Config file |
+| `CODEZ_HUB_URL` | `https://code.open0p.com` | Hub URL (overrides config) |
+| `CODEZ_HUB_TOKEN` | unset | Pre-provisioned bearer; skips OAuth |
+| `HUB_EMAIL` | `opz-<hostname>@opzero.local` | Hub OAuth identity |
+| `HUB_PASSWORD` | random base64url(18) | Hub OAuth password |
+| `AUTHKIT_URL` | `https://authkit.open0p.com` | MCPAuthKit endpoint |
+
+## Autostart units
+
+- macOS launchd: `scripts/install-launchd.sh` / `scripts/uninstall-launchd.sh`.
+  Label: `sh.opzero.claude`. Logs in `.logs/`.
+- Linux systemd (user): `scripts/install-systemd.sh`. Unit name:
+  `codez.service`. Logs in `.logs/`.
+
+## Manual first run
+
+If you prefer to do each step by hand:
 
 ```bash
-# Run directly without installation
-bunx codez serve
-
-# Or install globally
-bun add -g opzero-claude
-codez serve
+bun install && cd web && bun install && cd .. && bun run build
+bun run server/index.ts    # generates config on first run
+codez hub login            # optional: provision hub agent
 ```
 
-## Homebrew (Tap)
+## Cloudflare Tunnel (optional appendix)
+
+If you want a direct HTTPS URL to this machine without going through the
+hub, use a Cloudflare Tunnel. This is the old distribution path; the hub
+is the recommended remote access route.
 
 ```bash
-# Add the tap
-brew tap opzero-sh/tap
-
-# Install
-brew install codez
-
-# Run
-codez serve
-```
-
-Expected Homebrew formula (`opzero-sh/homebrew-tap`):
-
-```ruby
-class Codez < Formula
-  desc "Self-hosted Claude Code server"
-  homepage "https://github.com/OpZero-sh/CodeZ"
-  url "https://github.com/OpZero-sh/CodeZ/archive/refs/tags/vX.Y.Z.tar.gz"
-  sha256 "..."
-  license "MIT"
-
-  uses_from_bun "bun"
-
-  def install
-    system "bun", "run", "build"
-    bin.install "bin/cli.ts"
-  end
-
-  test do
-    system "#{bin}/codez", "version"
-  end
-end
-```
-
-## Cloudflare Tunnel Setup
-
-For public access without a dedicated domain:
-
-```bash
-# Install cloudflared
 brew install cloudflared
-
-# Quick tunnel to localhost
 cloudflared tunnel --url http://localhost:4097
 ```
 
-For persistent tunnels with a domain:
-
-```bash
-# Create tunnel
-cloudflared tunnel create codez
-
-# Add DNS route
-cloudflared tunnel route dns add codez your-domain.example.com
-
-# Configure ingress
-cloudflared tunnel ingress rule --tunnel-name codez --hostname your-domain.example.com --origin-port 4097
-
-# Run
-cloudflared tunnel run codez
-```
-
-## macOS launchd
-
-Create `~/Library/LaunchAgents/com.opzero.claude.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.opzero.claude</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>bun</string>
-    <string>run</string>
-    <string>/path/to/opzero-claude/server/index.ts</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-</dict>
-</plist>
-```
-
-Load with: `launchctl load ~/Library/LaunchAgents/com.opzero.claude.plist`
-
-## Environment Variables
-
-Override config file settings:
-
-- `CODEZ_PORT` - Server port (default: 4097)
-- `CODEZ_HOST` - Server host (default: 127.0.0.1)
-- `CODEZ_CONFIG_PATH` - Custom config file path
-
-## First Run Setup
-
-Run the interactive setup:
-
-```bash
-codez init
-```
-
-Or use Docker volume mounting to provide a config file at `~/.config/opzero-claude/config.json`.
+For persistent tunnels with a domain, see the
+[Remote Access section of the README](../README.md#remote-access-with-cloudflare-tunnel).

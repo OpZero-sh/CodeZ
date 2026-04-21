@@ -20,6 +20,8 @@ export interface Config {
   loopbackBypass: boolean;
   /** Auth provider to use. Default is cookie-based form auth. */
   authProvider?: "cookie" | "cf-access" | "authkit";
+  /** Persisted hub URL. Overridden by CODEZ_HUB_URL when present. */
+  hubUrl?: string;
 }
 
 const DEFAULT_HOST = "127.0.0.1";
@@ -96,6 +98,16 @@ function printCredentialsBanner(
   );
 }
 
+export function getConfigPath(): string {
+  return configPath();
+}
+
+export async function saveConfig(config: Config): Promise<void> {
+  const path = configPath();
+  await mkdir(dirname(path), { recursive: true });
+  await Bun.write(path, JSON.stringify(config, null, 2) + "\n");
+}
+
 export async function loadConfig(): Promise<Config> {
   const path = configPath();
   const file = Bun.file(path);
@@ -120,6 +132,7 @@ export async function loadConfig(): Promise<Config> {
       authSecret,
       loopbackBypass: raw.loopbackBypass ?? true,
       authProvider: raw.authProvider ?? "cookie",
+      ...(raw.hubUrl ? { hubUrl: raw.hubUrl } : {}),
     };
 
     if (mutated) {

@@ -4,6 +4,13 @@ import { createHash, randomBytes } from "node:crypto";
 
 const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://authkit.open0p.com";
 const SCOPES = "mcp:tools agent:ws";
+
+export const AUTH_FILE_PATH = join(
+  process.env.HOME ?? "/root",
+  ".config",
+  "opzero-claude",
+  "hub-auth.json",
+);
 const AUTH_FILE = join(
   process.env.HOME ?? "/root",
   ".config",
@@ -11,11 +18,15 @@ const AUTH_FILE = join(
   "hub-auth.json",
 );
 
-interface StoredAuth {
+export interface StoredAuth {
   clientId: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
+}
+
+export async function readStoredAuth(): Promise<StoredAuth | null> {
+  return loadStoredAuth();
 }
 
 async function loadStoredAuth(): Promise<StoredAuth | null> {
@@ -44,8 +55,8 @@ function generatePKCE(): { verifier: string; challenge: string } {
   return { verifier, challenge };
 }
 
-async function registerClient(redirectUri: string): Promise<string> {
-  const res = await fetch(`${AUTHKIT_URL}/oauth/register`, {
+async function registerClient(redirectUri: string, baseUrl: string = AUTHKIT_URL): Promise<string> {
+  const res = await fetch(`${baseUrl}/oauth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -68,8 +79,9 @@ async function exchangeCode(
   clientId: string,
   redirectUri: string,
   codeVerifier: string,
+  baseUrl: string = AUTHKIT_URL,
 ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-  const res = await fetch(`${AUTHKIT_URL}/oauth/token`, {
+  const res = await fetch(`${baseUrl}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -214,6 +226,96 @@ export async function login(): Promise<StoredAuth> {
     close();
     throw err;
   }
+}
+
+export interface HeadlessLoginOptions {
+  email: string;
+  password: string;
+  authkitUrl?: string;
+}
+
+export interface HeadlessLoginResult {
+  accessToken: string;
+  refreshToken: string;
+  email: string;
+  password: string;
+}
+
+async function runAuthorize(
+  baseUrl: string,
+  clientId: string,
+  redirectUri: string,
+  challenge: string,
+  email: string,
+  password: string,
+  mode: "signup" | "login",
+): Promise<string | null> {
+  const body = new URLSearchParams();
+  body.set("response_type", "code");
+  body.set("client_id", clientId);
+  body.set("redirect_uri", redirectUri);
+  body.set("scope", SCOPES);
+  body.set("state", "hubsetup");
+  body.set("code_challenge", challenge);
+  body.set("code_challenge_method", "S256");
+  body.set("email", email);
+  body.set("password", password);
+  body.set("action", "approve");
+  body.set("auth_mode", mode);
+
+  const res = await fetch(`${baseUrl}/oauth/authorize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+    redirect: "manual",
+  });
+
+  const location = res.headers.get("location");
+  if (!location) return null;
+  const match = location.match(/[?&]code=([^&]+)/);
+  return match ? decodeURIComponent(match[1]!) : null;
+}
+
+/**
+ * Noninteractive PKCE login against MCPAuthKit. Mirrors scripts/hub-oauth-login.sh.
+ * Attempts signup first, falls back to login on "user exists".
+ */
+export async function loginHeadless(
+  opts: HeadlessLoginOptions,
+): Promise<HeadlessLoginResult> {
+  const baseUrl = opts.authkitUrl ?? AUTHKIT_URL;
+  const redirectUri = "http://127.0.0.1:0/callback";
+  const { verifier, challenge } = generatePKCE();
+
+  const clientId = await registerClient(redirectUri, baseUrl);
+
+  let code = await runAuthorize(
+    baseUrl, clientId, redirectUri, challenge, opts.email, opts.password, "signup",
+  );
+  if (!code) {
+    code = await runAuthorize(
+      baseUrl, clientId, redirectUri, challenge, opts.email, opts.password, "login",
+    );
+  }
+  if (!code) {
+    throw new Error("headless login: no auth code returned from authkit (check email/password)");
+  }
+
+  const tokens = await exchangeCode(code, clientId, redirectUri, verifier, baseUrl);
+  const auth: StoredAuth = {
+    clientId,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresAt: Date.now() + tokens.expiresIn * 1000,
+  };
+  await saveAuth(auth);
+
+  return {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    email: opts.email,
+    password: opts.password,
+  };
 }
 
 /**
