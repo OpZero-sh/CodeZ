@@ -1,10 +1,9 @@
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { mkdir } from "node:fs/promises";
+import { getConfigDir } from "../config";
 
 function titlesPath(): string {
-  const home = process.env.HOME ?? homedir();
-  return join(home, ".config", "opzero-claude", "session-titles.json");
+  return join(getConfigDir(), "session-titles.json");
 }
 
 export async function loadSessionTitles(): Promise<Record<string, string>> {

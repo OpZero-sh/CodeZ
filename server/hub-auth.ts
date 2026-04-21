@@ -1,26 +1,47 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
+import { getConfigDir } from "./config";
 
 const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://authkit.open0p.com";
 const SCOPES = "mcp:tools agent:ws";
-const AUTH_FILE = join(
-  process.env.HOME ?? "/root",
-  ".config",
-  "opzero-claude",
-  "hub-auth.json",
-);
 
-interface StoredAuth {
+function authFilePath(): string {
+  return join(getConfigDir(), "hub-auth.json");
+}
+
+export const AUTH_FILE_PATH = authFilePath();
+
+export interface StoredAuth {
   clientId: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
+  /** Email used to provision the machine agent (noninteractive flows). */
+  email?: string;
+  /** Plaintext password generated on first provisioning. Persisted so that
+   * the creds can be recovered after the one-time setup banner is lost. */
+  agentPassword?: string;
+}
+
+export interface StoredCredentials {
+  email: string;
+  agentPassword: string;
+}
+
+export async function readStoredCredentials(): Promise<StoredCredentials | null> {
+  const stored = await loadStoredAuth();
+  if (!stored || !stored.email || !stored.agentPassword) return null;
+  return { email: stored.email, agentPassword: stored.agentPassword };
+}
+
+export async function readStoredAuth(): Promise<StoredAuth | null> {
+  return loadStoredAuth();
 }
 
 async function loadStoredAuth(): Promise<StoredAuth | null> {
   try {
-    const raw = await readFile(AUTH_FILE, "utf-8");
+    const raw = await readFile(authFilePath(), "utf-8");
     const data = JSON.parse(raw) as StoredAuth;
     if (data.clientId && data.accessToken && data.refreshToken) return data;
     return null;
@@ -30,8 +51,9 @@ async function loadStoredAuth(): Promise<StoredAuth | null> {
 }
 
 async function saveAuth(auth: StoredAuth): Promise<void> {
-  await mkdir(dirname(AUTH_FILE), { recursive: true });
-  await writeFile(AUTH_FILE, JSON.stringify(auth, null, 2) + "\n", { mode: 0o600 });
+  const path = authFilePath();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(auth, null, 2) + "\n", { mode: 0o600 });
 }
 
 function base64url(buf: Buffer): string {
@@ -44,8 +66,8 @@ function generatePKCE(): { verifier: string; challenge: string } {
   return { verifier, challenge };
 }
 
-async function registerClient(redirectUri: string): Promise<string> {
-  const res = await fetch(`${AUTHKIT_URL}/oauth/register`, {
+async function registerClient(redirectUri: string, baseUrl: string = AUTHKIT_URL): Promise<string> {
+  const res = await fetch(`${baseUrl}/oauth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -68,8 +90,9 @@ async function exchangeCode(
   clientId: string,
   redirectUri: string,
   codeVerifier: string,
+  baseUrl: string = AUTHKIT_URL,
 ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-  const res = await fetch(`${AUTHKIT_URL}/oauth/token`, {
+  const res = await fetch(`${baseUrl}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -216,6 +239,98 @@ export async function login(): Promise<StoredAuth> {
   }
 }
 
+export interface HeadlessLoginOptions {
+  email: string;
+  password: string;
+  authkitUrl?: string;
+}
+
+export interface HeadlessLoginResult {
+  accessToken: string;
+  refreshToken: string;
+  email: string;
+  password: string;
+}
+
+async function runAuthorize(
+  baseUrl: string,
+  clientId: string,
+  redirectUri: string,
+  challenge: string,
+  email: string,
+  password: string,
+  mode: "signup" | "login",
+): Promise<string | null> {
+  const body = new URLSearchParams();
+  body.set("response_type", "code");
+  body.set("client_id", clientId);
+  body.set("redirect_uri", redirectUri);
+  body.set("scope", SCOPES);
+  body.set("state", "hubsetup");
+  body.set("code_challenge", challenge);
+  body.set("code_challenge_method", "S256");
+  body.set("email", email);
+  body.set("password", password);
+  body.set("action", "approve");
+  body.set("auth_mode", mode);
+
+  const res = await fetch(`${baseUrl}/oauth/authorize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+    redirect: "manual",
+  });
+
+  const location = res.headers.get("location");
+  if (!location) return null;
+  const match = location.match(/[?&]code=([^&]+)/);
+  return match ? decodeURIComponent(match[1]!) : null;
+}
+
+/**
+ * Noninteractive PKCE login against MCPAuthKit. Mirrors scripts/hub-oauth-login.sh.
+ * Attempts signup first, falls back to login on "user exists".
+ */
+export async function loginHeadless(
+  opts: HeadlessLoginOptions,
+): Promise<HeadlessLoginResult> {
+  const baseUrl = opts.authkitUrl ?? AUTHKIT_URL;
+  const redirectUri = "http://127.0.0.1:0/callback";
+  const { verifier, challenge } = generatePKCE();
+
+  const clientId = await registerClient(redirectUri, baseUrl);
+
+  let code = await runAuthorize(
+    baseUrl, clientId, redirectUri, challenge, opts.email, opts.password, "signup",
+  );
+  if (!code) {
+    code = await runAuthorize(
+      baseUrl, clientId, redirectUri, challenge, opts.email, opts.password, "login",
+    );
+  }
+  if (!code) {
+    throw new Error("headless login: no auth code returned from authkit (check email/password)");
+  }
+
+  const tokens = await exchangeCode(code, clientId, redirectUri, verifier, baseUrl);
+  const auth: StoredAuth = {
+    clientId,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresAt: Date.now() + tokens.expiresIn * 1000,
+    email: opts.email,
+    agentPassword: opts.password,
+  };
+  await saveAuth(auth);
+
+  return {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    email: opts.email,
+    password: opts.password,
+  };
+}
+
 /**
  * Get a valid access token. Tries stored token first, refreshes if expired,
  * falls back to full login flow.
@@ -238,6 +353,8 @@ export async function getAccessToken(): Promise<string> {
         accessToken: refreshed.accessToken,
         refreshToken: refreshed.refreshToken,
         expiresAt: Date.now() + refreshed.expiresIn * 1000,
+        ...(stored.email ? { email: stored.email } : {}),
+        ...(stored.agentPassword ? { agentPassword: stored.agentPassword } : {}),
       };
       await saveAuth(updated);
       console.log("[hub-auth] token refreshed");

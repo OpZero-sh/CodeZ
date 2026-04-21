@@ -1,6 +1,6 @@
 import { readdir, unlink, readFile, stat } from "fs/promises";
 import { join } from "path";
-import { loadConfig } from "./config";
+import { loadConfig, getConfigPath } from "./config";
 import { SessionPool } from "./claude/pool";
 import { ChannelBridgePool } from "./claude/channel-bridge";
 import { channelsDir, isPidAlive } from "./claude/channels";
@@ -217,8 +217,7 @@ export class SelfHeal {
       return;
     }
 
-    const home = process.env.HOME ?? process.env.HOME ?? "";
-    const path = join(home, ".config", "opzero-claude", "config.json");
+    const path = getConfigPath();
 
     try {
       const fstat = await stat(path);

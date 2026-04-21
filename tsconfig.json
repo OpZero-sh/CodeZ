@@ -23,6 +23,6 @@
       "@/*": ["./web/src/*"]
     }
   },
-  "include": ["server/**/*.ts", "web/src/**/*.ts", "web/src/**/*.tsx"],
+  "include": ["server/**/*.ts", "bin/**/*.ts", "web/src/**/*.ts", "web/src/**/*.tsx"],
   "exclude": ["node_modules", "web/dist"]
 }

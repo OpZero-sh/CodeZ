@@ -1,43 +1,60 @@
 import { hostname, arch, cpus, totalmem, platform } from "node:os";
 import { readdir, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { HubMachineAgent } from "../../codez-hub/client/agent";
-import type { HubAgentConfig, CommandHandler } from "../../codez-hub/client/types";
-import type { RepoInfo, SessionInfo } from "../../codez-hub/src/protocol/types";
+import {
+  HubMachineAgent,
+  type HubAgentConfig,
+  type CommandHandler,
+  type RepoInfo,
+  type SessionInfo,
+} from "@opzero/codez-hub-client";
 import type { SessionPool } from "./claude/pool";
 import type { EventBus } from "./bus";
 import { listProjects, listSessionsForProject } from "./claude/history";
 import type { Config } from "./config";
-import { getAccessToken, createTokenRefresher } from "./hub-auth";
+import { loadConfig, getConfigDir } from "./config";
+import { getAccessToken, createTokenRefresher, readStoredAuth } from "./hub-auth";
+
+const DEFAULT_HUB_URL = "https://code.open0p.com";
 
 export interface HubConfig {
   url: string;
   token: string;
 }
 
-const TOKEN_PATH = join(
-  process.env.HOME ?? "/root",
-  ".config",
-  "opzero-claude",
-  "hub-token",
-);
+function tokenPath(): string {
+  return join(getConfigDir(), "hub-token");
+}
 
 export async function loadHubConfig(): Promise<HubConfig | null> {
-  const url = process.env.CODEZ_HUB_URL;
-  if (!url) return null;
-
-  // Priority: env var > OAuth flow > token file
-  let token = process.env.CODEZ_HUB_TOKEN;
-  if (!token) {
+  let url = process.env.CODEZ_HUB_URL;
+  if (!url) {
     try {
-      token = await getAccessToken();
-    } catch (err) {
-      console.error("[hub] OAuth login failed:", err instanceof Error ? err.message : err);
+      const cfg = await loadConfig();
+      url = cfg.hubUrl;
+    } catch {
+      // fall through
+    }
+  }
+  if (!url) url = DEFAULT_HUB_URL;
+
+  let token = process.env.CODEZ_HUB_TOKEN;
+
+  // Only attempt OAuth flow if we have stored creds; otherwise running
+  // `getAccessToken` would trigger an interactive browser login at startup.
+  if (!token) {
+    const stored = await readStoredAuth();
+    if (stored) {
+      try {
+        token = await getAccessToken();
+      } catch (err) {
+        console.error("[hub] token refresh failed:", err instanceof Error ? err.message : err);
+      }
     }
   }
   if (!token) {
     try {
-      token = (await readFile(TOKEN_PATH, "utf-8")).trim();
+      token = (await readFile(tokenPath(), "utf-8")).trim();
     } catch {
       return null;
     }
@@ -210,11 +227,15 @@ function generateMachineId(): string {
 }
 
 export async function startHubAgent(
-  hubConfig: HubConfig,
+  hubConfig: HubConfig | null,
   appConfig: Config,
   pool: SessionPool,
   _bus: EventBus,
-): Promise<HubMachineAgent> {
+): Promise<HubMachineAgent | null> {
+  if (!hubConfig || !hubConfig.url || !hubConfig.token) {
+    console.warn("[hub] skipping — no credentials configured (run 'codez hub login')");
+    return null;
+  }
   const repos = await collectRepos();
   const sessions = await collectSessions(pool);
   const cpuInfo = cpus();

@@ -18,7 +18,7 @@ import { SessionPool } from "./claude/pool";
 import { ChannelBridgePool } from "./claude/channel-bridge";
 import { SelfHeal } from "./self-heal";
 import { loadHubConfig, startHubAgent } from "./hub";
-import type { HubMachineAgent } from "../../codez-hub/client/agent";
+import type { HubMachineAgent } from "@opzero/codez-hub-client";
 
 const config = await loadConfig();
 const authProvider = config.authProvider === "cf-access"
@@ -97,7 +97,7 @@ bus.emit({ type: "server.connected" });
 let hubAgent: HubMachineAgent | null = null;
 loadHubConfig().then(async (hubConfig) => {
   if (!hubConfig) {
-    console.log("[hub] no hub config found (set CODEZ_HUB_URL + CODEZ_HUB_TOKEN to enable)");
+    console.warn("[hub] skipping — no credentials configured (run 'codez hub login')");
     return;
   }
   try {

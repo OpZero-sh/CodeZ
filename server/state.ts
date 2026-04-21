@@ -1,7 +1,7 @@
-import { homedir } from "os";
-import { resolve } from "path";
+import { join } from "path";
+import { getConfigDir } from "./config";
 
-const STATE_FILE = resolve(homedir(), ".config/opzero-claude/state.json");
+const STATE_FILE = join(getConfigDir(), "state.json");
 
 interface ObservabilityState {
   dailySnapshots: Array<{

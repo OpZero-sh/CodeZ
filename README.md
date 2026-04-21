@@ -130,17 +130,20 @@ See [docs/mcp.md](docs/mcp.md) for the full MCP server reference.
 
 - [Bun](https://bun.sh) runtime
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
-- A domain + [Cloudflare](https://www.cloudflare.com/) account (for remote access)
 
 ### Install and run
 
 ```bash
 git clone https://github.com/OpZero-sh/CodeZ.git
 cd CodeZ
-bun run setup
+codez setup
 ```
 
-The setup wizard installs dependencies, builds the web UI, creates your server credentials, and optionally configures the MCP connector.
+One command installs dependencies, builds the web UI, provisions a machine
+agent against the default CodeZ Hub (`https://code.open0p.com`), registers
+the local MCP bridge with Claude Code, installs autostart, and starts the
+server. It is idempotent — rerun any time. Flags: `--skip-hub`,
+`--skip-mcp`, `--skip-autostart`, `--no-start`.
 
 Or do it manually:
 
@@ -157,11 +160,23 @@ bun run start          # production server on http://127.0.0.1:4097
 bun run dev            # concurrent server (4097) + Vite dev server (5173)
 ```
 
+### What the agent sees
+
+After `codez setup`, the machine automatically appears in
+[CodeZ Hub](https://code.open0p.com) with its hostname, repos, and any active
+sessions. Any MCP client — Claude.ai, Claude CLI, mobile — can connect to
+the hub and drive this machine remotely.
+
 ---
 
-## Remote Access with Cloudflare Tunnel
+## Remote Access with Cloudflare Tunnel (optional appendix)
 
-CodeZ is designed to run on your local machine (Mac Mini, MacBook, home server) and be accessed remotely via a [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/). You set up your own tunnel and domain — CodeZ does not phone home or require any OpZero infrastructure.
+The primary remote access path is the CodeZ Hub — after `codez setup`, any
+MCP client that talks to the hub can reach this machine. If you also want a
+direct HTTPS URL to this machine (e.g. to hit the web UI from a phone
+without going through the hub), [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) is the recommended
+route. You set up your own tunnel and domain — CodeZ does not phone home or
+require any OpZero infrastructure.
 
 ### Setup
 
@@ -253,7 +268,7 @@ See [docs/launchd.md](docs/launchd.md) for the runbook.
 
 ## Config
 
-Server config lives at `~/.config/opzero-claude/config.json`. On first run, the server generates a random password, bcrypt-hashes it, and writes an auth secret. You can also run `bun run setup` or `codez init` to configure interactively.
+Server config lives at `~/.config/opzero-claude/config.json`. On first run, the server generates a random password, bcrypt-hashes it, writes an auth secret, and persists the hub URL when `codez setup` provisions it. Hub OAuth tokens live at `~/.config/opzero-claude/hub-auth.json` (mode 0600). You can run `codez setup` any time — it is idempotent.
 
 ### Environment Variables
 

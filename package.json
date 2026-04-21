@@ -11,7 +11,7 @@
     "dev:web": "cd web && bun run dev",
     "build": "cd web && bun run build",
     "start": "bun run server/index.ts",
-    "setup": "bun install && cd web && bun install && cd .. && bun run build && bash scripts/init.sh",
+    "setup": "bun run bin/cli.ts setup",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
@@ -21,6 +21,7 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@opzero/codez-hub-client": "file:../codez-hub/packages/client"
   }
 }
