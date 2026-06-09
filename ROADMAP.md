@@ -96,11 +96,6 @@ Wave 3 — voice + palette + memory + auth + research probes (2026-04-11):
 - **Cloudflare Access auth** — `createCloudflareAccessAuthProvider` reads
   `Cf-Access-Jwt-Assertion`, verifies via JWKS from `cdn-cgi/access/certs`, with 5-min
   JWKS cache. Activate via `"authProvider": "cf-access"` in config.
-- **Research probes** — 9 background agents wrote `docs/research/` on KAIROS,
-  ULTRAPLAN, VOICE_MODE, DAEMON, AGENT_TRIGGERS, BRIDGE_MODE/MONITOR_TOOL, BUDDY,
-  autoDream. Findings: KAIROS/ULTRAPLAN are compile-time stripped from public builds;
-  MONITOR_TOOL shipped v2.1.98+; VOICE_MODE has no native Claude Code primitive;
-  BUDDY is real but not scriptable; autoDream has readable memory files.
 - **`.claude/agents/codez.md`** — agent definition file orienting future subagents
   to project layout, conventions, style rules, gotchas, and known open items.
 
@@ -155,38 +150,6 @@ tool. CodeZ should:
 
 Estimated: half day to probe the protocol + render screenshots, another
 half for the action overlay + streaming. High visual impact.
-
-**1. Research-preview probe swarm.** [DONE — wave 3 shipped 9 research docs in `docs/research/`.] User surfaced a list of gated Claude
-Code features worth reverse-engineering. Same format as the remote-trigger
-probe that found Channels: one background agent per feature, each writes
-findings to `docs/research/<feature>.md`, then synthesize. Priority order
-within the list:
-
-- **KAIROS** — autonomous background agent behind `PROACTIVE/KAIROS`
-  flags. Three exclusive tools not in regular Claude Code: push
-  notifications, file delivery, GitHub PR subscriptions. Append-only
-  daily logs. Cross-session persistence. If scriptable, this is a
-  long-running-task orchestrator we can wrap.
-- **ULTRAPLAN** — offloads planning to a remote Cloud Container Runtime
-  session running Opus 4.6 for up to 30 minutes. Browser-approvable.
-  `ULTRAPLAN_TELEPORT_LOCAL` sentinel returns the result to the local
-  terminal. If usable, this is free infra for hard planning jobs.
-- **autoDream** — memory consolidation during idle, four-phase
-  architecture. The user-facing auto-memory the home-level CLAUDE.md
-  already uses may be the surface of this. Worth probing for how
-  "idle" is detected and whether the consolidation can be invoked.
-- **VOICE_MODE** — if this enables dictation into a live claude session,
-  it's the best hands-free mobile primitive we could add. Pairs with
-  the no-notifications preference: voice in, visual out.
-- **DAEMON** — may be another path to a long-running backend that
-  doesn't require a terminal. Could replace launchd for some use cases.
-- **AGENT_TRIGGERS** — might let one session spawn another on events.
-- **BRIDGE_MODE, MONITOR_TOOL** — unknown shape, worth enumerating.
-- **BUDDY** — Tamagotchi with 18 species, deterministic Mulberry32 gacha
-  seeded from userId, stats like DEBUGGING/CHAOS/SNARK. Low priority,
-  high whimsy. Good Easter egg candidate if it's scriptable.
-- **Undercover Mode / Anti-distillation** — noted, not actionable (one
-  is employee-only, the other is outbound pollution only).
 
 Estimated: one research wave of 6-10 background agents, ~30 minutes
 wall, ~$5-10 subagent cost. Dispatch by dropping the `/orchestrate`
@@ -669,7 +632,7 @@ session — wired into the same skill that this agent uses. This makes
 ideation a first-class CodeZ feature rather than a one-off CLI
 workflow. The command opens a full-screen brainstorming overlay with
 the same one-question-at-a-time flow. After the user approves a design,
-it auto-generates a spec file in `docs/superpowers/specs/` and queues
+it auto-generates a spec file and queues
 it for wave execution. Also wires in the visual companion (web-based
 mockup browser) so design discussions can include live diagrams.
 Estimated: ~1 day.
@@ -679,7 +642,7 @@ orchestrator to work in fully autonomous mode: given a natural-language
 goal, the orchestrator breaks it into implementation waves, dispatches
 agents per wave, integrates results, and self-corrects on failures —
 all without prompting the user. The orchestrator already has the wave
-pattern (`.agent-log/`, per-wave commit, `Roadmap.md` updates). The
+pattern (per-wave commit, `Roadmap.md` updates). The
 gap is: auto-scoping ("what can I ship in wave N?"), retry logic for
 failed agent tasks, and a progress HUD in the UI that shows wave
 number, items in flight, and completed count. Also add a "pause" affordance
@@ -831,7 +794,6 @@ effort level + context menu + compact mode.
 
 - `CLAUDE.md` — architecture, conventions, style rules, gotchas
 - `docs/channels.md` — Channels user-facing documentation
-- `docs/remote-trigger-findings.md` — research doc that led to Channels
 - `docs/launchd.md` — autostart runbook
 - `scripts/launch-opzero.sh` — wrapper launcher for channel-enabled sessions
 - GitHub: https://github.com/OpZero-sh/CodeZ (private)

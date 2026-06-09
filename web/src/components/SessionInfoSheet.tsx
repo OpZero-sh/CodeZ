@@ -24,7 +24,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useStore } from "@/lib/store";
+import { findSession, getSelectedSessionKey, useStore } from "@/lib/store";
 import { api, type MemoryFile } from "@/lib/api";
 import type { Session, SessionStatus } from "@/lib/types";
 
@@ -296,14 +296,15 @@ export function SessionInfoSheet({
   onOpenChange,
 }: SessionInfoSheetProps) {
   const state = useStore();
-  const session: Session | null =
-    state.selected.slug && state.selected.sessionId
-      ? ((state.sessionsByProject[state.selected.slug] ?? []).find(
-          (s) => s.id === state.selected.sessionId,
-        ) ?? null)
-      : null;
+  const session: Session | null = findSession(
+    state,
+    state.selected.source,
+    state.selected.slug,
+    state.selected.sessionId,
+  );
+  const sessionKey = getSelectedSessionKey(state.selected);
 
-  const messages = session ? (state.messages[session.id] ?? []) : [];
+  const messages = session && sessionKey ? (state.messages[sessionKey] ?? []) : [];
   const messageCount = messages.length;
 
   const meta = session?.metadata;
@@ -312,7 +313,7 @@ export function SessionInfoSheet({
   const [memoryLoading, setMemoryLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open || !session?.projectSlug) {
+    if (!open || !session?.projectSlug || state.selected.source !== "local") {
       setMemory(null);
       return;
     }
@@ -327,7 +328,7 @@ export function SessionInfoSheet({
         setMemory(null);
         setMemoryLoading(false);
       });
-  }, [open, session?.projectSlug]);
+  }, [open, session?.projectSlug, state.selected.source]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

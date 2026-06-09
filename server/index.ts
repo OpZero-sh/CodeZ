@@ -13,6 +13,7 @@ import { searchRoutes } from "./routes/search";
 import { uatRunRoute } from "./routes/uat";
 import { mcpServersApiRoute, mcpMetricsRoute } from "./routes/mcp";
 import { observabilityRoutes } from "./routes/observability";
+import { hubTokenRoute } from "./routes/hub-token";
 import { mcpPrmRoute, mcpTransportRoute, stopMcpPoller, initMcpTransport } from "./routes/mcp-transport";
 import { SessionPool } from "./claude/pool";
 import { ChannelBridgePool } from "./claude/channel-bridge";
@@ -44,6 +45,14 @@ const server = Bun.serve({
     const authed = await withAuth(req, config, authProvider);
     if (authed instanceof Response) return authed;
 
+    // Helper: if the auth provider refreshed a token, attach the new cookie
+    const maybeAttachCookie = (res: Response): Response => {
+      if (!authed.setCookie) return res;
+      const cloned = new Response(res.body, res);
+      cloned.headers.append("Set-Cookie", authed.setCookie);
+      return cloned;
+    };
+
     if (url.pathname === "/api/auth" || url.pathname.startsWith("/api/auth/")) {
       if (url.pathname === "/api/auth/provider") {
         return Response.json({ provider: config.authProvider ?? "cookie" });
@@ -53,7 +62,7 @@ const server = Bun.serve({
         if (url.pathname === "/api/auth/login") return handleAuthKitLogin(req);
         if (url.pathname === "/api/auth/callback") return handleAuthKitCallback(req, config);
       }
-      return authRoutes(req, config, authProvider);
+      return maybeAttachCookie(await authRoutes(req, config, authProvider));
     }
 
     // MCP transport — before other routes since it handles its own auth
@@ -63,23 +72,24 @@ const server = Bun.serve({
     if (url.pathname === "/api/health") return healthRoute(req);
     if (url.pathname === "/api/health/details") return healthDetailsRoute(req);
     if (url.pathname === "/api/server/restart") return restartRoute(req);
+    if (url.pathname === "/api/hub/token") return maybeAttachCookie(await hubTokenRoute(req, authed.user));
     if (url.pathname === "/api/events") return eventsRoute(req, bus);
     if (url.pathname === "/api/state") return stateRoutes(req);
     if (url.pathname === "/api/search") return searchRoutes(req);
     if (url.pathname === "/api/mcp/servers") return mcpServersApiRoute(req);
     if (url.pathname === "/api/mcp/metrics") return mcpMetricsRoute(req);
     if (url.pathname === "/api/uat/run" && req.method === "POST") {
-      return uatRunRoute(req, config);
+      return maybeAttachCookie(await uatRunRoute(req, config));
     }
     if (url.pathname.startsWith("/api/observability")) {
-      return observabilityRoutes(req);
+      return maybeAttachCookie(await observabilityRoutes(req));
     }
     if (url.pathname.startsWith("/api/projects")) {
-      if (req.method === "POST") return sessionsRoutes(req, pool, bridges);
-      return projectsRoutes(req, pool);
+      if (req.method === "POST") return maybeAttachCookie(await sessionsRoutes(req, pool, bridges));
+      return maybeAttachCookie(await projectsRoutes(req, pool));
     }
     if (url.pathname.startsWith("/api/sessions"))
-      return sessionsRoutes(req, pool, bridges);
+      return maybeAttachCookie(await sessionsRoutes(req, pool, bridges));
 
     return serveStatic(req);
   },

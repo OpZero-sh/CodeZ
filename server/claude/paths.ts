@@ -12,3 +12,7 @@ export function encodeProjectSlug(absPath: string): string {
 export function decodeProjectSlug(slug: string): string {
   return slug.replace(/^-/, "/").replace(/-/g, "/");
 }
+
+export function resolveSessionCwd(slug: string, _sessionId?: string): string {
+  return decodeProjectSlug(slug);
+}

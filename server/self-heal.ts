@@ -24,6 +24,7 @@ export class SelfHeal {
   private timer: Timer | null = null;
   private pool: SessionPool;
   private bridges: ChannelBridgePool;
+  private lastWarnings = new Map<string, { count: number; firstSeen: number }>();
 
   constructor(pool: SessionPool, bridges: ChannelBridgePool, interval = 60000) {
     this.pool = pool;
@@ -47,7 +48,18 @@ export class SelfHeal {
   }
 
   getLog(): SelfHealLogEntry[] {
-    return [...this.log];
+    const deduped = [...this.log];
+    for (const [key, info] of this.lastWarnings) {
+      if (info.count <= 1) continue;
+      const [action, ...detailParts] = key.split(":");
+      const details = detailParts.join(":");
+      deduped.push({
+        timestamp: Date.now(),
+        action,
+        details: `${details} (repeated ${info.count}x since ${new Date(info.firstSeen).toISOString()})`,
+      });
+    }
+    return deduped;
   }
 
   getStatus(): SubsystemStatus[] {
@@ -87,6 +99,14 @@ export class SelfHeal {
   }
 
   private logAction(action: string, details: string): void {
+    const key = `${action}:${details}`;
+    const existing = this.lastWarnings.get(key);
+    if (existing) {
+      existing.count++;
+      return;
+    }
+    this.lastWarnings.set(key, { count: 1, firstSeen: Date.now() });
+
     const entry: SelfHealLogEntry = {
       timestamp: Date.now(),
       action,

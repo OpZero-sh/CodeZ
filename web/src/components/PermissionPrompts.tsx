@@ -1,17 +1,17 @@
 import { useMemo } from "react";
 import { Check, ShieldAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { store, useStore } from "@/lib/store";
+import { getSelectedSessionKey, store, useStore } from "@/lib/store";
 
 function PermissionPrompts() {
   const state = useStore();
-  const sessionId = state.selected.sessionId;
+  const sessionKey = getSelectedSessionKey(state.selected);
   const list = useMemo(
-    () => (sessionId ? state.permissionRequests[sessionId] ?? [] : []),
-    [sessionId, state.permissionRequests],
+    () => (sessionKey ? state.permissionRequests[sessionKey] ?? [] : []),
+    [sessionKey, state.permissionRequests],
   );
 
-  if (!sessionId || list.length === 0) return null;
+  if (!sessionKey || list.length === 0) return null;
 
   return (
     <div className="shrink-0 border-b border-accent/40 bg-accent/10">
@@ -41,7 +41,7 @@ function PermissionPrompts() {
             <Button
               size="sm"
               onClick={() =>
-                store.resolvePermission(sessionId, r.requestId, "allow")
+                store.resolvePermission(sessionKey, r.requestId, "allow")
               }
               className="bg-primary text-primary-foreground hover:bg-primary/90 h-8"
               aria-label="Allow"
@@ -53,7 +53,7 @@ function PermissionPrompts() {
               size="sm"
               variant="destructive"
               onClick={() =>
-                store.resolvePermission(sessionId, r.requestId, "deny")
+                store.resolvePermission(sessionKey, r.requestId, "deny")
               }
               className="h-8"
               aria-label="Deny"

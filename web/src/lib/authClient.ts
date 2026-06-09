@@ -2,6 +2,10 @@ export interface AuthUser {
   sub: string;
 }
 
+export interface HubTokenResponse {
+  accessToken: string;
+}
+
 async function readErrorMessage(res: Response): Promise<string> {
   let body = "";
   try {
@@ -21,6 +25,13 @@ async function readErrorMessage(res: Response): Promise<string> {
 }
 
 export const authApi = {
+  async provider(): Promise<string | null> {
+    const r = await fetch("/api/auth/provider", { credentials: "include" });
+    if (!r.ok) return null;
+    const j = (await r.json()) as { provider?: string };
+    return j.provider ?? null;
+  },
+
   async me(): Promise<AuthUser | null> {
     const r = await fetch("/api/auth/me", { credentials: "include" });
     if (!r.ok) {
@@ -93,5 +104,11 @@ export const authApi = {
       method: "POST",
       credentials: "include",
     });
+  },
+
+  async hubToken(): Promise<HubTokenResponse | null> {
+    const r = await fetch("/api/hub/token", { credentials: "include" });
+    if (!r.ok) return null;
+    return r.json() as Promise<HubTokenResponse>;
   },
 };

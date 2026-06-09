@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { store, useStore } from "@/lib/store";
-import type { SidebarSort } from "@/lib/store";
+import { getSessionKey, store, useStore } from "@/lib/store";
+import type { SessionSource, SidebarSort } from "@/lib/store";
 import type { Project, Session } from "@/lib/types";
 
 function slugDisplayName(slug: string): string {
@@ -120,19 +120,23 @@ function InlineRename({ sessionId, currentTitle, onDone }: InlineRenameProps) {
 }
 
 interface SessionRowProps {
+  source: SessionSource;
   session: Session;
   projectSlug: string;
   active: boolean;
   flashing: boolean;
-  onOpen: (slug: string, id: string) => void;
+  readOnly?: boolean;
+  onOpen: (source: SessionSource, slug: string, id: string) => void;
   onDispose: (id: string) => void;
 }
 
 function SessionRow({
+  source,
   session: s,
   projectSlug,
   active,
   flashing,
+  readOnly,
   onOpen,
   onDispose,
 }: SessionRowProps) {
@@ -149,7 +153,7 @@ function SessionRow({
           ? "bg-secondary/60 border-primary"
           : "border-transparent hover:bg-secondary/40",
       )}
-      onClick={() => onOpen(projectSlug, s.id)}
+      onClick={() => onOpen(source, projectSlug, s.id)}
     >
       <MessageSquare
         className={cn(
@@ -185,7 +189,7 @@ function SessionRow({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      {!readOnly && <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           type="button"
           onClick={(e) => {
@@ -235,28 +239,32 @@ function SessionRow({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </div>}
     </div>
   );
 }
 
 interface ProjectGroupProps {
+  source: SessionSource;
   project: Project;
   sessions: Session[];
-  flashingSessionIds: Set<string>;
-  activeId: string | null;
+  flashingSessionKeys: Set<string>;
+  activeKey: string | null;
   expanded: boolean;
+  readOnly?: boolean;
   onToggle: () => void;
-  onOpen: (slug: string, id: string) => void;
+  onOpen: (source: SessionSource, slug: string, id: string) => void;
   onDispose: (id: string) => void;
 }
 
 function ProjectGroup({
+  source,
   project,
   sessions,
-  flashingSessionIds,
-  activeId,
+  flashingSessionKeys,
+  activeKey,
   expanded,
+  readOnly,
   onToggle,
   onOpen,
   onDispose,
@@ -292,10 +300,12 @@ function ProjectGroup({
           {sessions.map((s) => (
             <SessionRow
               key={s.id}
+              source={source}
               session={s}
               projectSlug={project.slug}
-              active={s.id === activeId}
-              flashing={flashingSessionIds.has(s.id)}
+              active={getSessionKey(source, s.id) === activeKey}
+              flashing={flashingSessionKeys.has(getSessionKey(source, s.id) ?? "")}
+              readOnly={readOnly}
               onOpen={onOpen}
               onDispose={onDispose}
             />
@@ -519,16 +529,18 @@ function SortControl() {
 function SessionList() {
   const state = useStore();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [flashingSessionIds, setFlashingSessionIds] = useState<Set<string>>(
+  const [flashingSessionKeys, setFlashingSessionKeys] = useState<Set<string>>(
     () => new Set(),
   );
   const previousStatusesRef = useRef<Record<string, Session["status"]>>({});
   const flashTimeoutsRef = useRef<Map<string, number>>(new Map());
   const hydratedRef = useRef(false);
+  const activeKey = getSessionKey(state.selected.source, state.selected.sessionId);
 
   const grouped = useMemo(() => {
     return state.projects
       .map((p) => ({
+        source: "local" as const,
         project: p,
         sessions: sortSessions(
           state.sessionsByProject[p.slug] ?? [],
@@ -545,48 +557,67 @@ function SessionList() {
     state.hideEmptyProjects,
   ]);
 
+  const remoteGroups = useMemo(() => {
+    return Object.values(state.remote).map((remote) => ({
+      machine: remote.machine,
+      groups: remote.projects
+        .map((project) => ({
+          source: remote.machine.machineId,
+          project,
+          sessions: sortSessions(remote.sessionsByProject[project.slug] ?? [], state.sidebarSort),
+        }))
+        .filter((group) => !state.hideEmptyProjects || group.sessions.length > 0),
+    }));
+  }, [state.remote, state.sidebarSort, state.hideEmptyProjects]);
+
   useEffect(() => {
     const nextStatuses: Record<string, Session["status"]> = {};
-    const sessions = grouped.flatMap(
-      ({ sessions: projectSessions }) => projectSessions,
-    );
+    const sessions = [
+      ...grouped.flatMap(({ source, sessions: projectSessions }) =>
+        projectSessions.map((session) => ({ source, session })),
+      ),
+      ...remoteGroups.flatMap(({ machine, groups }) =>
+        groups.flatMap(({ sessions }) => sessions.map((session) => ({ source: machine.machineId, session }))),
+      ),
+    ];
 
     if (!hydratedRef.current) {
       hydratedRef.current = true;
-      for (const session of sessions) {
-        nextStatuses[session.id] = session.status;
+      for (const { source, session } of sessions) {
+        nextStatuses[getSessionKey(source, session.id) ?? session.id] = session.status;
       }
       previousStatusesRef.current = nextStatuses;
       return;
     }
 
-    for (const session of sessions) {
-      nextStatuses[session.id] = session.status;
+    for (const { source, session } of sessions) {
+      const sessionKey = getSessionKey(source, session.id) ?? session.id;
+      nextStatuses[sessionKey] = session.status;
       if (session.status !== "live") continue;
-      if (previousStatusesRef.current[session.id] === "live") continue;
+      if (previousStatusesRef.current[sessionKey] === "live") continue;
 
-      setFlashingSessionIds((current) => {
+      setFlashingSessionKeys((current) => {
         const next = new Set(current);
-        next.add(session.id);
+        next.add(sessionKey);
         return next;
       });
 
-      const existingTimeout = flashTimeoutsRef.current.get(session.id);
+      const existingTimeout = flashTimeoutsRef.current.get(sessionKey);
       if (existingTimeout) window.clearTimeout(existingTimeout);
       const timeout = window.setTimeout(() => {
-        setFlashingSessionIds((current) => {
-          if (!current.has(session.id)) return current;
+        setFlashingSessionKeys((current) => {
+          if (!current.has(sessionKey)) return current;
           const next = new Set(current);
-          next.delete(session.id);
+          next.delete(sessionKey);
           return next;
         });
-        flashTimeoutsRef.current.delete(session.id);
+        flashTimeoutsRef.current.delete(sessionKey);
       }, 1800);
-      flashTimeoutsRef.current.set(session.id, timeout);
+      flashTimeoutsRef.current.set(sessionKey, timeout);
     }
 
     previousStatusesRef.current = nextStatuses;
-  }, [grouped]);
+  }, [grouped, remoteGroups]);
 
   useEffect(() => {
     return () => {
@@ -622,18 +653,57 @@ function SessionList() {
               No projects yet.
             </div>
           )}
-          {grouped.map(({ project, sessions }) => (
+          {grouped.length > 0 && (
+            <div className="px-2 pb-2 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold">
+              This machine
+            </div>
+          )}
+          {grouped.map(({ source, project, sessions }) => (
             <ProjectGroup
-              key={project.slug}
+              key={`local:${project.slug}`}
+              source={source}
               project={project}
               sessions={sessions}
-              flashingSessionIds={flashingSessionIds}
-              activeId={state.selected.sessionId}
+              flashingSessionKeys={flashingSessionKeys}
+              activeKey={activeKey}
               expanded={!collapsed[project.slug]}
               onToggle={() => toggle(project.slug)}
-              onOpen={(slug, id) => store.openSession(slug, id)}
+              onOpen={(source: SessionSource, slug: string, id: string) => {
+                void store.openSession(slug, id, source);
+              }}
               onDispose={(id) => store.disposeSession(id)}
             />
+          ))}
+          {remoteGroups.map(({ machine, groups }) => (
+            <div key={machine.machineId} className="mb-3">
+              <div className="px-2 py-2 text-xs text-muted-foreground flex items-center justify-between gap-2">
+                <span className="truncate">{machine.hostname}</span>
+                <span className="inline-flex items-center gap-1 shrink-0">
+                  <span className={cn("h-2 w-2 rounded-full", machine.online ? "bg-cyan-400" : "bg-muted-foreground/40")} />
+                  {machine.online ? "online" : relTime(machine.lastSeenAt)}
+                </span>
+              </div>
+              {groups.map(({ source, project, sessions }) => {
+                const collapseKey = `${machine.machineId}:${project.slug}`;
+                return (
+                  <ProjectGroup
+                    key={collapseKey}
+                    source={source}
+                    project={project}
+                    sessions={sessions}
+                    flashingSessionKeys={flashingSessionKeys}
+                    activeKey={activeKey}
+                    expanded={!collapsed[collapseKey]}
+                    readOnly={!machine.online}
+                    onToggle={() => toggle(collapseKey)}
+                    onOpen={(sessionSource: SessionSource, slug: string, id: string) => {
+                      void store.openSession(slug, id, sessionSource);
+                    }}
+                    onDispose={() => {}}
+                  />
+                );
+              })}
+            </div>
           ))}
         </div>
       </ScrollArea>

@@ -71,7 +71,7 @@ async function registerClient(redirectUri: string, baseUrl: string = AUTHKIT_URL
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      client_name: "CodeZero Machine Agent",
+      client_name: "CodeZ Machine Agent",
       redirect_uris: [redirectUri],
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
@@ -172,7 +172,7 @@ function startCallbackServer(): Promise<{ port: number; codePromise: Promise<str
           if (code) {
             resolveCode(code);
             return new Response(
-              "<html><body><h1>Login successful</h1><p>You can close this tab and return to CodeZero.</p></body></html>",
+              "<html><body><h1>Login successful</h1><p>You can close this tab and return to CodeZ.</p></body></html>",
               { headers: { "Content-Type": "text/html" } },
             );
           }
