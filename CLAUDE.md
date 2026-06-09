@@ -197,8 +197,6 @@ opzero-claude/
 
   docs/
     launchd.md              install/uninstall/logs/status for the autostart plist
-    remote-trigger-findings.md  research doc: why RemoteTrigger was a dead end
-                                and why Channels (MCP-based) is the real primitive
 
   scripts/
     sh.opzero.claude.plist.template  launchd plist with {{PROJECT_ROOT}} / {{BUN_BIN}}
@@ -634,8 +632,6 @@ See `Roadmap.md` for full list with tiering. Key remaining items:
 - **Session tree by repo name** — group sidebar by git remote instead of slug.
 - **Self-healing** — reconciliation loop for stale channels, orphan processes.
 - **Distribution packaging** — Homebrew tap, bunx, or Docker.
-- **Research probe** — KAIROS/ULTRAPLAN/autoDream are either not shipped
-  or stripped from public builds. See `docs/research/` for findings.
 - **Voice input** — Web Speech API shipped (item 11).
 - **Command palette** — Cmd+K shipped (item 26).
 - **Cloudflare Access** — `CloudflareAccessAuthProvider` shipped; requires

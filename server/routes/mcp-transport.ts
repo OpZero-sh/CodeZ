@@ -2,7 +2,7 @@
  * MCP Streamable HTTP transport route.
  *
  * Mounts at /mcp on the main CodeZ server so agents reach it via
- * the Cloudflare tunnel (e.g. codez.yourdomain.com/mcp).
+ * codez.open0p.com/mcp through the existing Cloudflare tunnel.
  * Auth is handled here via AuthKit OAuth tokens — CodeZ's cookie
  * auth is bypassed for these paths (see auth.ts isPublicPath).
  */
@@ -20,7 +20,7 @@ export function initMcpTransport(eventBus: EventBus): void {
   bus = eventBus;
 }
 
-const AUTHKIT_URL = process.env.AUTHKIT_URL || "";
+const AUTHKIT_URL = process.env.AUTHKIT_URL || "https://authkit.open0p.com";
 
 interface UserInfo {
   sub: string;
@@ -77,7 +77,7 @@ poller.connect();
 
 function createMcpServer(clientId: string): Server {
   const server = new Server(
-    { name: "codez-mcp", version: "0.1.0" },
+    { name: "codezero-mcp", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
   registerTools(server, client, poller, (event: ToolCallEvent) => {
@@ -108,7 +108,7 @@ function createMcpServer(clientId: string): Server {
 
 export function mcpPrmRoute(req: Request): Response {
   // Cloudflare tunnel forwards plain HTTP; use X-Forwarded-Proto to reconstruct the public origin
-  let serverUrl = process.env.CODEZ_MCP_URL;
+  let serverUrl = process.env.CODEZERO_MCP_URL;
   if (!serverUrl) {
     const url = new URL(req.url);
     const proto = req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");

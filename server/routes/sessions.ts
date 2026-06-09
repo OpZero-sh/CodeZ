@@ -3,16 +3,15 @@ import { join } from "path";
 import type { SessionPool } from "../claude/pool";
 import {
   loadSessionMessagesAndMetadata,
-  decodeProjectSlug,
 } from "../claude/history";
-import { claudeProjectsRoot } from "../claude/paths";
-import { saveSessionTitle } from "../claude/session-titles";
-import { getConfigDir } from "../config";
+import { claudeProjectsRoot, resolveSessionCwd } from "../claude/paths";
 import {
   readChannelDiscovery,
   injectToChannel,
   postPermissionVerdict,
 } from "../claude/channels";
+import { saveSessionTitle } from "../claude/session-titles";
+import { getConfigDir } from "../config";
 import type { ChannelBridgePool } from "../claude/channel-bridge";
 import type { SessionStatus } from "../types";
 
@@ -48,7 +47,7 @@ export async function sessionsRoutes(
       ) {
         const slug = decodeURIComponent(parts[2]);
         const body = await readJson<{ cwd?: string; model?: string; permissionMode?: string }>(req);
-        const cwd = body.cwd ?? decodeProjectSlug(slug);
+        const cwd = body.cwd ?? resolveSessionCwd(slug);
         const { sessionId } = await pool.createNew(cwd, body.model, body.permissionMode as any);
         return Response.json({ sessionId, cwd }, { status: 201 });
       }
@@ -74,9 +73,9 @@ export async function sessionsRoutes(
         const memoryDir = join(claudeProjectsRoot(), slug, "memory");
         try {
           const st = await stat(memoryDir);
-          if (!st.isDirectory()) return new Response("Not Found", { status: 404 });
+          if (!st.isDirectory()) return Response.json([]);
         } catch {
-          return new Response("Not Found", { status: 404 });
+          return Response.json([]);
         }
         const files = await readdir(memoryDir);
         const contents = await Promise.all(
@@ -126,7 +125,7 @@ export async function sessionsRoutes(
         if (typeof body.text !== "string" || body.text.length === 0) {
           return Response.json({ error: "text required" }, { status: 400 });
         }
-        const cwd = body.cwd ?? (body.slug ? decodeProjectSlug(body.slug) : undefined);
+        const cwd = body.cwd ?? (body.slug ? resolveSessionCwd(body.slug, id) : undefined);
         if (!cwd) {
           return Response.json({ error: "cwd or slug required" }, { status: 400 });
         }
@@ -261,7 +260,7 @@ export async function sessionsRoutes(
       if (parts.length === 4 && parts[3] === "fork" && req.method === "POST") {
         const body = await readJson<{ slug?: string }>(req);
         const slug = body.slug ?? url.searchParams.get("slug");
-        const cwd = slug ? decodeProjectSlug(slug) : undefined;
+        const cwd = slug ? resolveSessionCwd(slug, id) : undefined;
         if (!cwd) {
           return Response.json({ error: "slug required" }, { status: 400 });
         }

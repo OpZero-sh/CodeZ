@@ -111,7 +111,7 @@ function printCredentialsBanner(
     [
       "",
       line,
-      "  CodeZero: first run — generated credentials",
+      "  CodeZ: first run — generated credentials",
       line,
       `  config:   ${path}`,
       `  username: ${config.auth.username}`,

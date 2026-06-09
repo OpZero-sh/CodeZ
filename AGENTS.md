@@ -141,28 +141,6 @@ interface AuthProvider {
 }
 ```
 
-## Agent log
-
-The orchestrator maintains `.agent-log/` with per-wave entries covering:
-- Decisions and why
-- Challenges encountered
-- Files changed
-- Shipped items
-
-Read the most recent log before starting new work to avoid repeating mistakes.
-
-## Research docs
-
-`docs/research/` contains backgrounders on features under investigation:
-- `kairos.md` — not shipped, compile-time stripped
-- `ultraplan.md` — internal-only, not wrapable
-- `voice_mode.md` — no native Claude Code primitive, implemented via Web Speech API
-- `daemon.md` — KAIROS rename, not shipped
-- `agent_triggers.md` — cron scheduling, undocumented
-- `bridge_monitor.md` — BRIDGE_MODE is Remote Control (not applicable), MONITOR_TOOL shipped v2.1.98+
-- `buddy.md` — real Tamagotchi, not externally scriptable
-- `auto_dream.md` — memory consolidation, read-access straightforward
-
 ## Common pitfalls
 
 1. **Browser test auth**: loopback bypass is on by default; for full auth testing,
