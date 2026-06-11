@@ -41,8 +41,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { store, useStore } from "@/lib/store";
+import { findSession, store, useStore } from "@/lib/store";
 import { useEventStream } from "@/hooks/useEventStream";
+import { useHubStream } from "@/hooks/useHubStream";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { authApi } from "@/lib/authClient";
 import { api } from "@/lib/api";
@@ -156,10 +157,8 @@ function Header({
   const slug = state.selected.slug;
 
   const session = useMemo(() => {
-    if (!slug || !sessionId) return null;
-    const list = state.sessionsByProject[slug] ?? [];
-    return list.find((s) => s.id === sessionId) ?? null;
-  }, [slug, sessionId, state.sessionsByProject]);
+    return findSession(state, state.selected.source, slug, sessionId);
+  }, [state, slug, sessionId]);
 
   return (
     <header className="h-14 shrink-0 border-b border-border/40 glass px-2 sm:px-4 flex items-center gap-2">
@@ -227,7 +226,7 @@ function Header({
             <Info className="h-4 w-4" />
           </button>
         )}
-        {session && (
+        {session && state.selected.source === "local" && (
           <button
             type="button"
             onClick={() => {
@@ -235,6 +234,7 @@ function Header({
                 store.forkSession(slug, session.id).catch(() => {});
               }
             }}
+            disabled={state.selected.source !== "local"}
             className="h-9 w-9 flex items-center justify-center rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
             aria-label="Fork session"
             title="Fork into new session"
@@ -435,10 +435,36 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
   const activeMcpCallCount = state.mcpCalls.filter((c) => c.state === "running").length;
 
   useUrlSync();
+  useHubStream();
 
   useEffect(() => {
     store.loadProjects();
     store.loadMarkers();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const provider = await authApi.provider();
+      if (cancelled) return;
+      if (provider !== "authkit") {
+        store.setHubAuth(false, null);
+        return;
+      }
+      const token = await authApi.hubToken();
+      if (cancelled) return;
+      store.setHubAuth(!!token?.accessToken, token?.accessToken ?? null, token?.machineId ?? null);
+      if (token?.accessToken) {
+        store.loadRemoteMachines().catch(() => {});
+      }
+    })().catch(() => {
+      if (!cancelled) {
+        store.setHubAuth(false, null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

@@ -11,7 +11,7 @@ import { renderPart as _renderPart } from "@/components/parts";
 import ThreadNav from "@/components/ThreadNav";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useStore, store } from "@/lib/store";
+import { getSelectedSessionKey, useStore, store } from "@/lib/store";
 import type { Message, Part, ResultPart, ThinkingPart } from "@/lib/types";
 
 interface PartRenderContext {
@@ -137,17 +137,17 @@ function MessageCard({ msg }: { msg: Message }) {
   const isSystem = msg.role === "system";
   const [showActions, setShowActions] = useState(false);
 
-  const sessionId = state.selected.sessionId;
-  const markers = sessionId ? state.markers[sessionId] ?? [] : [];
+  const sessionKey = getSelectedSessionKey(state.selected);
+  const markers = sessionKey ? state.markers[sessionKey] ?? [] : [];
   const marker = markers.find((m) => m.messageId === msg.id);
   const isMarked = !!marker;
 
   function toggleMarker(e: React.MouseEvent) {
     e.stopPropagation();
     if (isMarked) {
-      store.removeMarker(sessionId!, marker.id);
+      store.removeMarker(sessionKey!, marker.id);
     } else {
-      store.addMarker({ sessionId: sessionId!, messageId: msg.id });
+      store.addMarker({ sessionId: sessionKey!, messageId: msg.id });
     }
   }
 
@@ -220,10 +220,10 @@ function MessageCard({ msg }: { msg: Message }) {
 
 function MessageThread() {
   const state = useStore();
-  const sessionId = state.selected.sessionId;
+  const sessionKey = getSelectedSessionKey(state.selected);
   const messages = useMemo<Message[]>(
-    () => (sessionId ? state.messages[sessionId] ?? [] : []),
-    [sessionId, state.messages],
+    () => (sessionKey ? state.messages[sessionKey] ?? [] : []),
+    [sessionKey, state.messages],
   );
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -237,9 +237,9 @@ function MessageThread() {
   );
 
   useEffect(() => {
-    if (lastSessionRef.current !== sessionId) {
+    if (lastSessionRef.current !== sessionKey) {
       stickRef.current = true;
-      lastSessionRef.current = sessionId;
+      lastSessionRef.current = sessionKey;
     }
     const el = scrollRef.current;
     if (!el) return;
@@ -248,7 +248,7 @@ function MessageThread() {
         el.scrollTop = el.scrollHeight;
       });
     }
-  }, [messages, sessionId]);
+  }, [messages, sessionKey]);
 
   function onScroll(e: UIEvent<HTMLDivElement>) {
     const el = e.currentTarget;
@@ -257,7 +257,7 @@ function MessageThread() {
     stickRef.current = atBottom;
   }
 
-  if (!sessionId) {
+  if (!sessionKey) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-center space-y-2">
