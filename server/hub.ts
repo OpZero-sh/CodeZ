@@ -1,5 +1,5 @@
 import { hostname, arch, cpus, totalmem, platform } from "node:os";
-import { readdir, stat, readFile } from "node:fs/promises";
+import { readdir, stat, readFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   HubMachineAgent,
@@ -10,7 +10,7 @@ import {
 } from "@opzero/codez-hub-client";
 import type { SessionPool } from "./claude/pool";
 import type { EventBus } from "./bus";
-import { listProjects, listSessionsForProject } from "./claude/history";
+import { encodeProjectSlug, listProjects, listSessionsForProject } from "./claude/history";
 import type { Config } from "./config";
 import { loadConfig, getConfigDir } from "./config";
 import { getAccessToken, createTokenRefresher, readStoredAuth } from "./hub-auth";
@@ -24,6 +24,25 @@ export interface HubConfig {
 
 function tokenPath(): string {
   return join(getConfigDir(), "hub-token");
+}
+
+function machineIdPath(): string {
+  return join(getConfigDir(), "machine-id");
+}
+
+export async function getStableMachineId(): Promise<string> {
+  const path = machineIdPath();
+  try {
+    const existing = (await readFile(path, "utf-8")).trim();
+    if (existing) return existing;
+  } catch {
+    // Fall through and create one.
+  }
+
+  const machineId = crypto.randomUUID();
+  await mkdir(getConfigDir(), { recursive: true });
+  await writeFile(path, `${machineId}\n`, { mode: 0o600 });
+  return machineId;
 }
 
 export async function loadHubConfig(): Promise<HubConfig | null> {
@@ -112,7 +131,7 @@ async function collectSessions(pool: SessionPool): Promise<SessionInfo[]> {
     seen.add(proc.sessionId);
     sessions.push({
       id: proc.sessionId,
-      slug: "",
+      slug: encodeProjectSlug(proc.cwd),
       status: "live",
     });
   }
@@ -220,17 +239,15 @@ function createCommandHandler(
   };
 }
 
-function generateMachineId(): string {
-  const host = hostname();
-  const plat = platform();
-  return `${host}-${plat}-${arch()}`;
+function shouldRefreshSessions(event: { type: string }): boolean {
+  return event.type === "session.created" || event.type === "session.updated" || event.type === "session.idle";
 }
 
 export async function startHubAgent(
   hubConfig: HubConfig | null,
   appConfig: Config,
   pool: SessionPool,
-  _bus: EventBus,
+  bus: EventBus,
 ): Promise<HubMachineAgent | null> {
   if (!hubConfig || !hubConfig.url || !hubConfig.token) {
     console.warn("[hub] skipping — no credentials configured (run 'codez hub login')");
@@ -239,13 +256,14 @@ export async function startHubAgent(
   const repos = await collectRepos();
   const sessions = await collectSessions(pool);
   const cpuInfo = cpus();
+  const machineId = await getStableMachineId();
 
   const agentConfig: HubAgentConfig = {
     hubUrl: hubConfig.url,
     token: hubConfig.token,
-    machineId: generateMachineId(),
+    machineId,
     machineInfo: {
-      machineId: generateMachineId(),
+      machineId,
       hostname: hostname(),
       os: platform(),
       arch: arch(),
@@ -262,6 +280,19 @@ export async function startHubAgent(
   const agent = new HubMachineAgent(agentConfig, handler);
 
   agent.updateSessions(sessions);
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  bus.subscribe((event) => {
+    if (!shouldRefreshSessions(event)) return;
+    if (refreshTimer) return;
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      collectSessions(pool)
+        .then((nextSessions) => agent.updateSessions(nextSessions))
+        .catch((err) => {
+          console.error("[hub] failed to refresh sessions:", err instanceof Error ? err.message : err);
+        });
+    }, 1000);
+  });
   await agent.connect();
 
   console.log("[hub] connected to CodeZ Hub");

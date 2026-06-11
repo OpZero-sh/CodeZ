@@ -7,7 +7,7 @@ import {
   BookmarkCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useStore } from "@/lib/store";
+import { getSelectedSessionKey, useStore } from "@/lib/store";
 
 interface ThreadNavProps {
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -28,9 +28,9 @@ function ThreadNav({
   const [showBottom, setShowBottom] = useState(false);
   const lastGPressRef = useRef(0);
 
-  const sessionId = state.selected.sessionId;
-  const markerIds = sessionId
-    ? (state.markers[sessionId] ?? []).filter((m) => !m.resolved).map((m) => m.messageId)
+  const sessionKey = getSelectedSessionKey(state.selected);
+  const markerIds = sessionKey
+    ? (state.markers[sessionKey] ?? []).filter((m) => !m.resolved).map((m) => m.messageId)
     : [];
 
   useEffect(() => {

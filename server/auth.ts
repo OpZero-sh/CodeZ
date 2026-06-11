@@ -23,7 +23,7 @@ export interface AuthUser {
   sub: string;
 }
 
-export type AuthResult = { ok: true; user: AuthUser } | { ok: false };
+export type AuthResult = { ok: true; user: AuthUser; setCookie?: string } | { ok: false };
 
 export interface AuthProvider {
   name: string;
@@ -481,21 +481,28 @@ function isPublicPath(pathname: string): boolean {
 // withAuth middleware
 // ---------------------------------------------------------------------------
 
+export interface AuthOk {
+  ok: true;
+  user?: AuthUser;
+  /** Set-Cookie header to attach when a token was silently refreshed */
+  setCookie?: string;
+}
+
 export async function withAuth(
   req: Request,
   config: Config,
   provider: AuthProvider,
-): Promise<true | Response> {
+): Promise<AuthOk | Response> {
   const url = new URL(req.url);
 
-  if (isPublicPath(url.pathname)) return true;
+  if (isPublicPath(url.pathname)) return { ok: true };
 
   if (config.loopbackBypass && isLoopbackHost(req.headers.get("host"))) {
-    return true;
+    return { ok: true };
   }
 
   const result = await provider.verify(req);
-  if (result.ok) return true;
+  if (result.ok) return { ok: true, user: result.user, setCookie: result.setCookie };
 
   return Response.json({ error: "unauthorized" }, { status: 401 });
 }

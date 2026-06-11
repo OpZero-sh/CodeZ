@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bookmark, X, Check, MessageSquare } from "lucide-react";
-import { useStore, store } from "@/lib/store";
+import { getSelectedSessionKey, useStore, store } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 interface MarkersPanelProps {
@@ -28,20 +28,20 @@ function getMessageSnippet(messages: { id: string; parts: { type: string; text?:
 
 export default function MarkersPanel({ onClose }: MarkersPanelProps) {
   const state = useStore();
-  const sessionId = state.selected.sessionId;
+  const sessionKey = getSelectedSessionKey(state.selected);
   const [showAll, setShowAll] = useState(false);
 
   const markers = useMemo(() => {
-    if (!sessionId) return [];
+    if (!sessionKey) return [];
     if (showAll) {
       return Object.entries(state.markers).flatMap(([sid, ms]) =>
         ms.map((m) => ({ ...m, sessionId: sid }))
       );
     }
-    return (state.markers[sessionId] ?? []).map((m) => ({ ...m, sessionId }));
-  }, [sessionId, state.markers, showAll]);
+    return (state.markers[sessionKey] ?? []).map((m) => ({ ...m, sessionId: sessionKey }));
+  }, [sessionKey, state.markers, showAll]);
 
-  const messages = sessionId ? state.messages[sessionId] ?? [] : [];
+  const messages = sessionKey ? state.messages[sessionKey] ?? [] : [];
 
   function jumpToMarker(messageId: string) {
     const el = document.querySelector(`[data-message-id="${messageId}"]`);

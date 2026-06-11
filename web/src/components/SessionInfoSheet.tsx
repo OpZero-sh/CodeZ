@@ -24,7 +24,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useStore } from "@/lib/store";
+import { findSession, getSelectedSessionKey, useStore } from "@/lib/store";
 import { api, type MemoryFile } from "@/lib/api";
 import type { Session, SessionStatus } from "@/lib/types";
 
@@ -296,14 +296,15 @@ export function SessionInfoSheet({
   onOpenChange,
 }: SessionInfoSheetProps) {
   const state = useStore();
-  const session: Session | null =
-    state.selected.slug && state.selected.sessionId
-      ? ((state.sessionsByProject[state.selected.slug] ?? []).find(
-          (s) => s.id === state.selected.sessionId,
-        ) ?? null)
-      : null;
+  const session: Session | null = findSession(
+    state,
+    state.selected.source,
+    state.selected.slug,
+    state.selected.sessionId,
+  );
+  const sessionKey = getSelectedSessionKey(state.selected);
 
-  const messages = session ? (state.messages[session.id] ?? []) : [];
+  const messages = session && sessionKey ? (state.messages[sessionKey] ?? []) : [];
   const messageCount = messages.length;
 
   const meta = session?.metadata;
@@ -312,7 +313,7 @@ export function SessionInfoSheet({
   const [memoryLoading, setMemoryLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open || !session?.projectSlug) {
+    if (!open || !session?.projectSlug || state.selected.source !== "local") {
       setMemory(null);
       return;
     }
@@ -327,7 +328,7 @@ export function SessionInfoSheet({
         setMemory(null);
         setMemoryLoading(false);
       });
-  }, [open, session?.projectSlug]);
+  }, [open, session?.projectSlug, state.selected.source]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -530,14 +531,14 @@ export function SessionInfoSheet({
                 <Row label="messages" value={messageCount} mono />
                 <Row
                   label="turns"
-                  value={state.usageTotals[session.id]?.turnCount ?? 0}
+                  value={state.usageTotals[sessionKey ?? ""]?.turnCount ?? 0}
                   mono
                 />
                 <Row
                   label="total cost"
                   value={
-                    state.usageTotals[session.id]?.totalCostUsd != null
-                      ? `$${state.usageTotals[session.id].totalCostUsd.toFixed(4)}`
+                    state.usageTotals[sessionKey ?? ""]?.totalCostUsd != null
+                      ? `$${state.usageTotals[sessionKey ?? ""].totalCostUsd.toFixed(4)}`
                       : "$0.0000"
                   }
                   mono
@@ -545,8 +546,8 @@ export function SessionInfoSheet({
                 <Row
                   label="input tokens"
                   value={
-                    state.usageTotals[session.id]?.totalInputTokens != null
-                      ? state.usageTotals[session.id].totalInputTokens.toLocaleString()
+                    state.usageTotals[sessionKey ?? ""]?.totalInputTokens != null
+                      ? state.usageTotals[sessionKey ?? ""].totalInputTokens.toLocaleString()
                       : "0"
                   }
                   mono
@@ -554,8 +555,8 @@ export function SessionInfoSheet({
                 <Row
                   label="output tokens"
                   value={
-                    state.usageTotals[session.id]?.totalOutputTokens != null
-                      ? state.usageTotals[session.id].totalOutputTokens.toLocaleString()
+                    state.usageTotals[sessionKey ?? ""]?.totalOutputTokens != null
+                      ? state.usageTotals[sessionKey ?? ""].totalOutputTokens.toLocaleString()
                       : "0"
                   }
                   mono
@@ -563,8 +564,8 @@ export function SessionInfoSheet({
                 <Row
                   label="total duration"
                   value={
-                    state.usageTotals[session.id]?.totalDurationMs != null
-                      ? `${(state.usageTotals[session.id].totalDurationMs / 1000).toFixed(1)}s`
+                    state.usageTotals[sessionKey ?? ""]?.totalDurationMs != null
+                      ? `${(state.usageTotals[sessionKey ?? ""].totalDurationMs / 1000).toFixed(1)}s`
                       : "0s"
                   }
                   mono

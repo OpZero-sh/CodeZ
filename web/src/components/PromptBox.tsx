@@ -48,7 +48,7 @@ declare global {
 import { Loader2, Mic, Send, Square, Paperclip, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { store, useStore } from "@/lib/store";
+import { findSession, getSelectedSessionKey, store, useStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import QuickActions from "./QuickActions";
 import SlashCommandPicker from "./SlashCommandPicker";
@@ -64,7 +64,9 @@ const BUILTIN_SLASH_COMMANDS = [
 function PromptBox() {
   const state = useStore();
   const sessionId = state.selected.sessionId;
-  const sending = sessionId ? !!state.sending[sessionId] : false;
+  const sessionKey = getSelectedSessionKey(state.selected);
+  const sending = sessionKey ? !!state.sending[sessionKey] : false;
+  const isRemote = state.selected.source !== null && state.selected.source !== "local";
   const [value, setValue] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [pickerIndex, setPickerIndex] = useState(0);
@@ -127,9 +129,10 @@ function PromptBox() {
     setListening(false);
   }
 
-  const currentSession = sessionId
-    ? state.sessionsByProject[state.selected.slug ?? ""]?.find((s) => s.id === sessionId)
-    : null;
+  const currentSession = findSession(state, state.selected.source, state.selected.slug, sessionId);
+  const remoteMachine = state.selected.source && state.selected.source !== "local"
+    ? state.remote[state.selected.source]?.machine
+    : undefined;
 
   const slashCommands = useMemo(() => {
     const fromMeta = currentSession?.metadata?.slashCommands;
@@ -153,7 +156,7 @@ function PromptBox() {
     setValue("");
     setSendError(null);
     setAttachments([]);
-  }, [sessionId]);
+  }, [sessionKey]);
 
   useEffect(() => {
     return () => {
@@ -199,7 +202,7 @@ function PromptBox() {
 
   async function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
-    if (!files || files.length === 0 || !sessionId) return;
+    if (!files || files.length === 0 || !sessionId || isRemote) return;
     for (const file of files) {
       try {
         const result = await api.uploadFile(sessionId, file);
@@ -216,7 +219,7 @@ function PromptBox() {
   }
 
   async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    if (!sessionId) return;
+    if (!sessionId || isRemote) return;
     const items = e.clipboardData.items;
     for (const item of items) {
       if (item.type.startsWith("image/")) {
@@ -295,7 +298,8 @@ function PromptBox() {
 
   const status = currentSession?.status;
   const channelPresent = !!currentSession?.channel?.present;
-  const disabled = !sessionId;
+  const machineOffline = !!remoteMachine && !remoteMachine.online;
+  const disabled = !sessionId || machineOffline;
   const canSend = !disabled && (value.trim().length > 0 || attachments.length > 0) && !sending;
 
   return (
@@ -306,6 +310,11 @@ function PromptBox() {
       }}
     >
       <div className="max-w-4xl mx-auto w-full px-3 pt-2">
+        {machineOffline && (
+          <div className="px-1 pb-2 text-[11px] text-muted-foreground">
+            Remote machine is offline. Cached history is read-only until it reconnects.
+          </div>
+        )}
         {sending && (
           <div className="flex items-center justify-end gap-1 text-[10px] text-primary px-1 pb-1">
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -394,7 +403,7 @@ function PromptBox() {
                   size="icon"
                   variant="ghost"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={disabled}
+                  disabled={disabled || isRemote}
                   aria-label="Attach file"
                   className="text-muted-foreground hover:text-primary"
                 >
