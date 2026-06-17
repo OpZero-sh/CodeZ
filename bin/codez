@@ -1,5 +1,17 @@
 #!/usr/bin/env sh
 # Wrapper so npm can wire up the `codez` bin entry.
 # All logic lives in cli.ts; bun executes it directly.
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# npm links this script into a global bin dir as a symlink, so $0 is the
+# symlink path, not the real file. Resolve the symlink chain before
+# locating cli.ts, or a global install looks for cli.ts beside the symlink.
+SELF="$0"
+while [ -L "$SELF" ]; do
+  DIR="$(cd "$(dirname "$SELF")" && pwd)"
+  LINK="$(readlink "$SELF")"
+  case "$LINK" in
+    /*) SELF="$LINK" ;;
+    *) SELF="$DIR/$LINK" ;;
+  esac
+done
+SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 exec bun "$SCRIPT_DIR/cli.ts" "$@"
