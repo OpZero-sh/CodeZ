@@ -1,5 +1,86 @@
 # CodeZ Roadmap
 
+CodeZ is the **public package/distribution surface** for the CodeZero application — the
+self-hosted Claude Code web UI, its remote MCP server (`packages/codezero-mcp/`, 17 tools),
+and the machine agent that registers with CodeZ Hub. CodeZero is the upstream **source**
+(private, where development happens and what runs on machines); CodeZ is where that source is
+packaged, published, and distributed (public repo, `git clone` + `codez setup`, Docker,
+Homebrew/bunx, MIT-licensed, public docs). The two are **not peer forks** — the intended
+direction is **CodeZero (source) → CodeZ (package/distribute)**. They drifted once and were
+force-synced to the same tip (`86f7926`) as a one-time cleanup; that manual sync is *not* the
+model.
+
+See the [OpZero platform roadmap](https://github.com/OpZero-sh/.github/blob/main/ROADMAP.md)
+for the cross-repo vision and phases.
+
+> Status legend: ✅ shipped · 🟡 in progress · ⚪ planned
+
+---
+
+## Near-term — end the manual-sync drift (Phase 1)
+
+The org Phase 1 ("one domain, one login") needs CodeZ to be a *reliable, reproducible* public
+distro that tracks source. Today CodeZ and CodeZero share a git tip and a feature set kept in
+line by hand — recent history is literally "mirror unified `codez setup` from CodeZero"
+(`7db15ce`), "headless hub OAuth login script (sync from CodeZero)" (`0a83a88`),
+"defensive refresh token handling" — i.e. cherry-picks across two repos. The workstream is to
+replace that with a defined release/packaging step.
+
+- ✅ **Shared hub client is a real package, not a copy.** `package.json` depends on
+  `@opzero/codez-hub-client` via `file:../codez-hub/packages/client` — the transport/agent
+  implementation is shared with CodeZero through one published package, not duplicated source.
+- ✅ **Public release surface exists.** Public repo, MIT license, `git clone` + idempotent
+  `codez setup`, Docker (`docker-compose up`), and the README's distribution story are live.
+- ✅ **Unified `codez setup`** mirrored from CodeZero — deps, build, hub provisioning, MCP
+  registration, autostart in one idempotent command (`7db15ce`, `00f6709`).
+- 🟡 **Define the CodeZero → CodeZ release/packaging pipeline.** Replace manual git syncs with
+  a one-way publish step (source → distro): a scripted/CI export that lands CodeZero changes
+  into CodeZ as a release, so the public distro tracks source without hand cherry-picks and
+  never needs another force-sync. *This is the primary Phase 1 deliverable for this repo.*
+- 🟡 **Promote `@opzero/codez-hub-client` to a versioned dependency.** The `file:` link is a
+  monorepo-local path; for a clean public distro, publish/pin the client by version so a
+  `git clone` of CodeZ resolves it without the sibling `codez-hub` checkout.
+- ⚪ **Default hub host cutover.** `codez setup` provisions against `https://code.open0p.com`
+  (README); track Phase 1's move to **`code.opzero.sh`** as a packaged default so published
+  builds point at the unified origin, not the legacy host.
+- ⚪ **Build/version provenance.** Stamp published builds with the source commit so a distro
+  artifact is traceable back to its CodeZero revision (and drift is detectable, not silent).
+
+**Done when:** a CodeZero change reaches the public CodeZ distro through a defined release
+step — no manual `git` sync, no per-file cherry-pick — and a fresh `git clone` builds and runs
+without the sibling source checkout.
+
+---
+
+## Later — distribution maturity (aligned to org phases)
+
+- ⚪ **Packaged installers** (Phase 1/5): Homebrew tap (`brew install opzero-sh/tap/codez`) and
+  a `bunx codez` one-liner on top of the existing Docker path, so users don't clone the repo.
+- ⚪ **Distribute the `code.opzero.sh/mcp` connector story** (Phase 1/3): once MCPAuthKit is the
+  single OAuth for UI + `/mcp`, ship the public connector docs and config defaults from here.
+- ⚪ **Multi-agent packaging** (Phase 4): when CodeZero gains the agent-session adapter and a
+  Codex backend, package `codez setup` multi-agent detection into the public distro.
+- ⚪ **Public docs site** for the distro: architecture, Channels, hub setup, MCP connector —
+  the public-facing surface for everything CodeZero builds privately.
+
+---
+
+## Maintaining this roadmap
+
+This is the repo-scoped view; the canonical cross-repo source of truth is the
+[OpZero platform roadmap](https://github.com/OpZero-sh/.github/blob/main/ROADMAP.md). When a
+CodeZ item or status changes here, reflect it in the org roadmap's per-repo workstream (and
+the org Project board) in the same pass — don't let them drift.
+
+
+---
+
+## Detailed backlog
+
+_Preserved from the prior living-document roadmap. The section above is the org-aligned scope; the detail below is the working backlog._
+
+## CodeZ Roadmap
+
 Living document. Everything we know we want to build or investigate next,
 ordered roughly by impact. Architecture rules and conventions live in
 [CLAUDE.md](./CLAUDE.md). Git history is the source of truth for what
