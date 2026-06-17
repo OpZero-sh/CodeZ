@@ -31,6 +31,12 @@ function machineIdPath(): string {
 }
 
 export async function getStableMachineId(): Promise<string> {
+  // Ephemeral cloud machines (e.g. the Fly container) lose the on-disk
+  // machine-id file across redeploys, which would mint a new identity each
+  // boot and break the hub's wake-by-id UX. An explicit override pins it.
+  const override = process.env.CODEZ_MACHINE_ID?.trim();
+  if (override) return override;
+
   const path = machineIdPath();
   try {
     const existing = (await readFile(path, "utf-8")).trim();
