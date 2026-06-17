@@ -7,6 +7,7 @@
 - [Channels](channels.md) — bidirectional terminal relay via MCP plugin
 - [Installation](install.md) — Docker, Bun, Homebrew, and environment setup
 - [launchd](launchd.md) — macOS auto-start with LaunchAgent
+- [Syncing from CodeZero](sync-from-codezero.md) — one-way source→distro export and CI guard
 
 ## Quick Reference
 
