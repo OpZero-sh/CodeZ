@@ -2,6 +2,17 @@
 
 Self-hosted web UI for Claude Code. Drive AI-assisted development sessions from your phone, tablet, or any browser — no API key required.
 
+> **Runtime requirement:** CodeZ requires [Bun](https://bun.sh) (v1.0+). The server and CLI are TypeScript executed directly by Bun — no Node.js transpile step. Install Bun before installing CodeZ: `curl -fsSL https://bun.sh/install | bash`
+
+## npm install
+
+```bash
+npm install -g @opzero/cli   # installs the codez CLI globally
+codez setup                  # provisions + starts the server
+```
+
+Bun must be in PATH at install time and at runtime.
+
 CodeZ wraps the official [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) using its supported `stream-json` duplex interface. It does not hijack credentials, inject prompts through unofficial channels, or require an Anthropic API key. Users authenticate with their existing Claude Max (or Team/Enterprise) subscription via OAuth, fully compliant with [Anthropic's Terms of Service](https://www.anthropic.com/policies/terms-of-service).
 
 Built by [OpZero](https://opzero.sh). Part of the OpZero open-source ecosystem.

@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Wrapper so npm can wire up the `codez` bin entry.
+# All logic lives in cli.ts; bun executes it directly.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec bun "$SCRIPT_DIR/cli.ts" "$@"

@@ -1,9 +1,10 @@
 {
-  "name": "opzero-claude",
+  "name": "@opzero/cli",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "bin": {
-    "codez": "./bin/cli.ts"
+    "codez": "./bin/codez"
   },
   "scripts": {
     "dev": "concurrently -n server,web -c cyan,magenta \"bun run dev:server\" \"bun run dev:web\"",
@@ -13,7 +14,24 @@
     "start": "bun run server/index.ts",
     "setup": "bun run bin/cli.ts setup",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "cd web && bun run build"
+  },
+  "files": [
+    "bin",
+    "server",
+    "web/dist",
+    "packages/codezero-mcp",
+    "scripts",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -22,6 +40,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@opzero/codez-hub-client": "file:../codez-hub/packages/client"
+    "@opzero/codez-hub-client": "^0.1.0"
   }
 }
