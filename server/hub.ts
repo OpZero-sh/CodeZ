@@ -258,6 +258,12 @@ export async function startHubAgent(
   const cpuInfo = cpus();
   const machineId = await getStableMachineId();
 
+  const wakeUrl = process.env.CODEZ_WAKE_URL;
+  const capabilities: Record<string, unknown> = {};
+  if (wakeUrl) {
+    capabilities.wakeUrl = wakeUrl;
+  }
+
   const agentConfig: HubAgentConfig = {
     hubUrl: hubConfig.url,
     token: hubConfig.token,
@@ -274,6 +280,7 @@ export async function startHubAgent(
     repos,
     codezApiUrl: `http://127.0.0.1:${appConfig.port}`,
     onTokenRefresh: createTokenRefresher(),
+    ...(Object.keys(capabilities).length > 0 ? { capabilities } : {}),
   };
 
   const handler = createCommandHandler(pool, appConfig);

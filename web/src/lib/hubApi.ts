@@ -45,8 +45,14 @@ async function req<T>(token: string, path: string, init?: RequestInit): Promise<
   return res.json() as Promise<T>;
 }
 
+export interface WakeResult {
+  status: "online" | "waking";
+}
+
 export const hubApi = {
   listMachines: (token: string) => req<{ machines: HubMachine[] }>(token, "/api/machines"),
+  wakeMachine: (token: string, machineId: string) =>
+    req<WakeResult>(token, `/api/machines/${encodeURIComponent(machineId)}/wake`, { method: "POST" }),
   listProjects: (token: string, machineId: string) =>
     req<{ projects: Project[] }>(token, `/api/machines/${encodeURIComponent(machineId)}/projects`),
   listSessions: (token: string, machineId: string, slug: string) =>
