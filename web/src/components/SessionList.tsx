@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { getSessionKey, store, useStore } from "@/lib/store";
 import type { SessionSource, SidebarSort } from "@/lib/store";
 import type { Project, Session } from "@/lib/types";
+import { hubApi } from "@/lib/hubApi";
 
 function slugDisplayName(slug: string): string {
   const parts = slug.split("-").filter(Boolean);
@@ -332,6 +334,7 @@ function NewSessionDialog({ projects, defaultSlug }: NewSessionDialogProps) {
   const [model, setModel] = useState<string>("");
   const [permissionMode, setPermissionMode] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [waking, setWaking] = useState<Record<string, string | null>>({});
 
   const remoteMachines = useMemo(() => {
     return Object.values(state.remote)
@@ -366,6 +369,29 @@ function NewSessionDialog({ projects, defaultSlug }: NewSessionDialogProps) {
       setModel("");
       setPermissionMode("");
     }
+  }
+
+  async function triggerWake(id: string) {
+    if (!state.hubToken) return;
+    setWaking((prev) => ({ ...prev, [id]: "waking" }));
+    try {
+      await hubApi.wakeMachine(state.hubToken, id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setWaking((prev) => ({
+        ...prev,
+        [id]: msg.includes("no wake URL") ? "no-wake-url" : "error",
+      }));
+      return;
+    }
+    // Machine will flip to online via useHubStream machine.status event; clear transient state after a delay.
+    setTimeout(() => {
+      setWaking((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, 8000);
   }
 
   async function submit() {
@@ -440,6 +466,45 @@ function NewSessionDialog({ projects, defaultSlug }: NewSessionDialogProps) {
                   </option>
                 ))}
               </select>
+              {machineId !== "local" && (() => {
+                const selected = remoteMachines.find((r) => r.machine.machineId === machineId);
+                if (!selected || selected.machine.online) return null;
+                const wakeState = waking[machineId];
+                if (wakeState === "no-wake-url") {
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      This machine cannot be woken remotely.
+                    </p>
+                  );
+                }
+                if (wakeState === "error") {
+                  return (
+                    <p className="text-xs text-destructive">
+                      Wake request failed. Try again later.
+                    </p>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={wakeState === "waking"}
+                      onClick={() => void triggerWake(machineId)}
+                      className="h-7 gap-1.5 text-xs text-primary border border-primary/30 hover:bg-primary/10"
+                    >
+                      <Zap className="h-3 w-3" />
+                      {wakeState === "waking" ? "Waking…" : "Wake"}
+                    </Button>
+                    {wakeState === "waking" && (
+                      <span className="text-xs text-muted-foreground">
+                        Machine is starting up…
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
           <div className="space-y-1.5">
