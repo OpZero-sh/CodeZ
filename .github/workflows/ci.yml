@@ -1,0 +1,79 @@
+name: ci
+
+# Phase 1 CI for CodeZ (public fork / npm distribution repo).
+#
+# This is a BESPOKE workflow rather than a caller of the org reusable
+# .github/workflows/ci-bun.yml, because CodeZ is NOT an npm/bun workspace:
+#   - root package.json has no "workspaces" field
+#   - root and web/ are two independent installs, each with its own committed
+#     lockfile (bun.lock and web/bun.lock)
+# The reusable ci-bun.yml handles a single working-directory + single install,
+# so it cannot frozen-install both packages. Hence two explicit jobs below.
+#
+# No secrets are required: the only cross-repo dependency
+# (@opzero/codez-hub-client) is a published public npm package, so the frozen
+# install works on forks too.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  root:
+    name: typecheck + test (root)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Pinned to the bun version that generated the committed lockfiles.
+          bun-version: 1.3.8
+
+      # Root tsconfig.json includes web/src/**/*.tsx, and React / @types/react
+      # live only in web/node_modules. So the root typecheck needs BOTH the
+      # root deps and the web deps installed. Each has its own committed
+      # lockfile, so both installs are frozen.
+      - name: Install root dependencies (frozen)
+        run: bun install --frozen-lockfile
+
+      - name: Install web dependencies (frozen)
+        run: bun install --frozen-lockfile
+        working-directory: web
+
+      - name: Typecheck (root)
+        run: bun run typecheck
+
+      - name: Test (root)
+        run: bun test
+
+  web:
+    name: build (web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+
+      - name: Install web dependencies (frozen)
+        run: bun install --frozen-lockfile
+        working-directory: web
+
+      # web `build` = `tsc --noEmit && vite build`, so this also typechecks web.
+      - name: Build (web)
+        run: bun run build
+        working-directory: web
+
