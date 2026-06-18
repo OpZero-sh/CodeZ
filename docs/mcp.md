@@ -43,7 +43,7 @@ Restart Claude Code. The 17 CodeZ tools will appear in your tool list.
 
 The recommended remote path is **through the CodeZ Hub**, not a direct tunnel
 to this machine. After `codez setup`, this machine registers as a machine agent
-with `https://code.open0p.com`, and any MCP client that talks to the hub can
+with `https://code.opzero.sh`, and any MCP client that talks to the hub can
 reach it.
 
 To point Claude Code at the hub:
@@ -52,7 +52,7 @@ To point Claude Code at the hub:
 {
   "codez": {
     "type": "http",
-    "url": "https://code.open0p.com/mcp"
+    "url": "https://code.opzero.sh/mcp"
   }
 }
 ```
@@ -60,8 +60,8 @@ To point Claude Code at the hub:
 On first use, Claude Code will:
 
 1. Discover the Protected Resource Metadata at
-   `https://code.open0p.com/.well-known/oauth-protected-resource`
-2. Find the authorization server (MCPAuthKit at `authkit.open0p.com`)
+   `https://code.opzero.sh/.well-known/oauth-protected-resource`
+2. Find the authorization server (MCPAuthKit at `auth.opzero.sh`)
 3. Open a browser window for OAuth consent
 4. Exchange the authorization code for an access token
 5. Use the token for all subsequent requests (auto-refreshes)

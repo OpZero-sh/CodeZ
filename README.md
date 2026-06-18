@@ -151,7 +151,7 @@ codez setup
 ```
 
 One command installs dependencies, builds the web UI, provisions a machine
-agent against the default CodeZ Hub (`https://code.open0p.com`), registers
+agent against the default CodeZ Hub (`https://code.opzero.sh`), registers
 the local MCP bridge with Claude Code, installs autostart, and starts the
 server. It is idempotent — rerun any time. Flags: `--skip-hub`,
 `--skip-mcp`, `--skip-autostart`, `--no-start`.
@@ -174,7 +174,7 @@ bun run dev            # concurrent server (4097) + Vite dev server (5173)
 ### What the agent sees
 
 After `codez setup`, the machine automatically appears in
-[CodeZ Hub](https://code.open0p.com) with its hostname, repos, and any active
+[CodeZ Hub](https://code.opzero.sh) with its hostname, repos, and any active
 sessions. Any MCP client — Claude.ai, Claude CLI, mobile — can connect to
 the hub and drive this machine remotely.
 

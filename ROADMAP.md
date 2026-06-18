@@ -40,7 +40,7 @@ replace that with a defined release/packaging step.
 - 🟡 **Promote `@opzero/codez-hub-client` to a versioned dependency.** The `file:` link is a
   monorepo-local path; for a clean public distro, publish/pin the client by version so a
   `git clone` of CodeZ resolves it without the sibling `codez-hub` checkout.
-- ⚪ **Default hub host cutover.** `codez setup` provisions against `https://code.open0p.com`
+- ⚪ **Default hub host cutover.** `codez setup` provisions against `https://code.opzero.sh`
   (README); track Phase 1's move to **`code.opzero.sh`** as a packaged default so published
   builds point at the unified origin, not the legacy host.
 - ⚪ **Build/version provenance.** Stamp published builds with the source commit so a distro
