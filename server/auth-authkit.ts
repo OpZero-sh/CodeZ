@@ -2,7 +2,7 @@
  * MCPAuthKit OAuth provider for CodeZero web UI.
  *
  * Authenticates users via the same MCPAuthKit instance used by the Hub and
- * Claude.ai MCP connectors. Users see the authkit.open0p.com login screen,
+ * Claude.ai MCP connectors. Users see the auth.opzero.sh login screen,
  * then get redirected back with a session cookie.
  *
  * Flow:
@@ -25,7 +25,7 @@ import {
 } from "./auth";
 import type { Config } from "./config";
 
-const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://authkit.open0p.com";
+const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://auth.opzero.sh";
 const SCOPES = "mcp:tools agent:ws";
 
 function base64url(buf: Buffer): string {

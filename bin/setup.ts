@@ -15,8 +15,8 @@ export interface SetupOptions {
   withDesktopControl: boolean;
 }
 
-const DEFAULT_HUB_URL = "https://code.open0p.com";
-const DEFAULT_AUTHKIT_URL = "https://authkit.open0p.com";
+const DEFAULT_HUB_URL = "https://code.opzero.sh";
+const DEFAULT_AUTHKIT_URL = "https://auth.opzero.sh";
 const HEALTH_URL = "http://127.0.0.1:4097/api/health";
 const HEALTH_DETAILS_URL = "http://127.0.0.1:4097/api/health/details";
 

@@ -40,7 +40,7 @@ export function useHubStream() {
 
     function connect() {
       if (stopped) return;
-      const url = new URL("wss://code.open0p.com/api/stream");
+      const url = new URL("wss://code.opzero.sh/api/stream");
       url.searchParams.set("token", state.hubToken!);
       ws = new WebSocket(url.toString());
 

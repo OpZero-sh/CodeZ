@@ -15,7 +15,7 @@ import type { Config } from "./config";
 import { loadConfig, getConfigDir } from "./config";
 import { getAccessToken, createTokenRefresher, readStoredAuth } from "./hub-auth";
 
-const DEFAULT_HUB_URL = "https://code.open0p.com";
+const DEFAULT_HUB_URL = "https://code.opzero.sh";
 
 export interface HubConfig {
   url: string;

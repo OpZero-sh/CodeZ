@@ -18,7 +18,7 @@ Behind the scenes, `codez setup`:
    password + authSecret).
 4. Provisions a headless hub machine agent via MCPAuthKit PKCE (skippable
    with `--skip-hub`).
-5. Persists `hubUrl` into the config (default `https://code.open0p.com`).
+5. Persists `hubUrl` into the config (default `https://code.opzero.sh`).
 6. Registers the local MCP bridge with Claude Code via
    `claude mcp add --scope user codez -- http http://127.0.0.1:4097/mcp`
    (skippable with `--skip-mcp`).
@@ -49,11 +49,11 @@ against the mounted config dir, then execs the server. Provide
 | `CODEZERO_PORT` | `4097` | Server port |
 | `CODEZERO_HOST` | `127.0.0.1` | Server host |
 | `CODEZERO_CONFIG_PATH` | `~/.config/opzero-claude/config.json` | Config file |
-| `CODEZ_HUB_URL` | `https://code.open0p.com` | Hub URL (overrides config) |
+| `CODEZ_HUB_URL` | `https://code.opzero.sh` | Hub URL (overrides config) |
 | `CODEZ_HUB_TOKEN` | unset | Pre-provisioned bearer; skips OAuth |
 | `HUB_EMAIL` | `opz-<hostname>@opzero.local` | Hub OAuth identity |
 | `HUB_PASSWORD` | random base64url(18) | Hub OAuth password |
-| `AUTHKIT_URL` | `https://authkit.open0p.com` | MCPAuthKit endpoint |
+| `AUTHKIT_URL` | `https://auth.opzero.sh` | MCPAuthKit endpoint |
 
 ## Autostart units
 

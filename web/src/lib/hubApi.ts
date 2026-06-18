@@ -1,6 +1,6 @@
 import type { Message, Project, Session } from "./types";
 
-const HUB_BASE_URL = "https://code.open0p.com";
+const HUB_BASE_URL = "https://code.opzero.sh";
 
 export interface HubMachine {
   machineId: string;

@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 import { getConfigDir } from "./config";
 
-const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://authkit.open0p.com";
+const AUTHKIT_URL = process.env.AUTHKIT_URL ?? "https://auth.opzero.sh";
 const SCOPES = "mcp:tools agent:ws";
 
 function authFilePath(): string {

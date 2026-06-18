@@ -49,7 +49,7 @@ async function cmdHubLogin(): Promise<void> {
   const { loginHeadless } = await import("../server/hub-auth");
   const email = process.env.HUB_EMAIL ?? `opz-${hostname()}@opzero.local`;
   const password = process.env.HUB_PASSWORD ?? randomBytes(18).toString("base64url");
-  const authkitUrl = process.env.AUTHKIT_URL ?? "https://authkit.open0p.com";
+  const authkitUrl = process.env.AUTHKIT_URL ?? "https://auth.opzero.sh";
   const result = await loginHeadless({ email, password, authkitUrl });
   console.log(`[hub] logged in as ${result.email}`);
   console.log(`[hub] password (save it): ${result.password}`);
