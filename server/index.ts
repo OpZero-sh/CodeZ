@@ -21,6 +21,7 @@ import { SelfHeal } from "./self-heal";
 import { loadHubConfig, startHubAgent } from "./hub";
 import { setHubMachineAgent } from "./hub-agent-registry";
 import { servicesSettingsRoute } from "./routes/services-settings";
+import { ensurePortAvailable, isAddrInUse } from "./port-guard";
 import type { HubMachineAgent } from "@opzero/codez-hub-client";
 
 const config = await loadConfig();
@@ -37,7 +38,8 @@ const selfHeal = new SelfHeal(pool, bridges);
 setSelfHeal(selfHeal);
 selfHeal.start();
 
-const server = Bun.serve({
+function startServer() {
+  return Bun.serve({
   hostname: config.host,
   port: config.port,
   idleTimeout: 0,
@@ -98,7 +100,30 @@ const server = Bun.serve({
 
     return serveStatic(req);
   },
-});
+  });
+}
+
+// Reclaim the port from a stale instance before binding, so a wedged
+// predecessor can't crash-loop us behind EADDRINUSE forever. See port-guard.ts.
+const preflight = ensurePortAvailable(config.port, (m) => console.log(m));
+if (!preflight.ok) {
+  console.error(`[opzero-claude] ${preflight.reason}; exiting for launchd retry`);
+  process.exit(1);
+}
+
+let server: ReturnType<typeof startServer>;
+try {
+  server = startServer();
+} catch (err) {
+  if (!isAddrInUse(err)) throw err;
+  console.warn("[opzero-claude] bind raced EADDRINUSE; evicting squatter and retrying once");
+  const retry = ensurePortAvailable(config.port, (m) => console.log(m));
+  if (!retry.ok) {
+    console.error(`[opzero-claude] ${retry.reason}; exiting for launchd retry`);
+    process.exit(1);
+  }
+  server = startServer();
+}
 
 console.log(
   `[opzero-claude] listening on http://${config.host}:${config.port}`,

@@ -1,6 +1,5 @@
 {
   "name": "@opzero/cli",
-  "version": "0.1.4",
   "private": false,
   "type": "module",
   "bin": {
@@ -17,6 +16,16 @@
     "test": "bun test",
     "prepublishOnly": "cd web && bun run build"
   },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "concurrently": "^9.1.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@opzero/codez-hub-client": "^0.1.0"
+  },
+  "version": "0.1.5",
   "files": [
     "bin",
     "server",
@@ -28,14 +37,5 @@
   ],
   "engines": {
     "bun": ">=1.0.0"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "concurrently": "^9.1.0",
-    "typescript": "5.9.3"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@opzero/codez-hub-client": "^0.1.0"
   }
 }
