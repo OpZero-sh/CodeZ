@@ -531,14 +531,14 @@ export function SessionInfoSheet({
                 <Row label="messages" value={messageCount} mono />
                 <Row
                   label="turns"
-                  value={state.usageTotals[sessionKey ?? ""]?.turnCount ?? 0}
+                  value={state.usageTotals[session.id]?.turnCount ?? 0}
                   mono
                 />
                 <Row
                   label="total cost"
                   value={
-                    state.usageTotals[sessionKey ?? ""]?.totalCostUsd != null
-                      ? `$${state.usageTotals[sessionKey ?? ""].totalCostUsd.toFixed(4)}`
+                    state.usageTotals[session.id]?.totalCostUsd != null
+                      ? `$${state.usageTotals[session.id].totalCostUsd.toFixed(4)}`
                       : "$0.0000"
                   }
                   mono
@@ -546,8 +546,8 @@ export function SessionInfoSheet({
                 <Row
                   label="input tokens"
                   value={
-                    state.usageTotals[sessionKey ?? ""]?.totalInputTokens != null
-                      ? state.usageTotals[sessionKey ?? ""].totalInputTokens.toLocaleString()
+                    state.usageTotals[session.id]?.totalInputTokens != null
+                      ? state.usageTotals[session.id].totalInputTokens.toLocaleString()
                       : "0"
                   }
                   mono
@@ -555,8 +555,8 @@ export function SessionInfoSheet({
                 <Row
                   label="output tokens"
                   value={
-                    state.usageTotals[sessionKey ?? ""]?.totalOutputTokens != null
-                      ? state.usageTotals[sessionKey ?? ""].totalOutputTokens.toLocaleString()
+                    state.usageTotals[session.id]?.totalOutputTokens != null
+                      ? state.usageTotals[session.id].totalOutputTokens.toLocaleString()
                       : "0"
                   }
                   mono
@@ -564,8 +564,8 @@ export function SessionInfoSheet({
                 <Row
                   label="total duration"
                   value={
-                    state.usageTotals[sessionKey ?? ""]?.totalDurationMs != null
-                      ? `${(state.usageTotals[sessionKey ?? ""].totalDurationMs / 1000).toFixed(1)}s`
+                    state.usageTotals[session.id]?.totalDurationMs != null
+                      ? `${(state.usageTotals[session.id].totalDurationMs / 1000).toFixed(1)}s`
                       : "0s"
                   }
                   mono

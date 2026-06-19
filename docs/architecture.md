@@ -1,6 +1,6 @@
-# CodeZ Architecture
+# CodeZero Architecture
 
-![CodeZ full architecture](codez-architecture.svg)
+![CodeZero full architecture](codezero-architecture.svg)
 
 ```
                                     INTERNET
@@ -10,7 +10,7 @@
     │   (React 19 SPA)                      (Claude Code, etc.)      │
     │        │                                     │                  │
     │        │ HTTPS                               │ MCP Streamable   │
-    │        │ codez.yourdomain.com                │ HTTP (POST/GET)  │
+    │        │ codez.opzero.sh                     │ HTTP (POST/GET)  │
     │        │                                     │                  │
     └────────┼─────────────────────────────────────┼──────────────────┘
              │                                     │
@@ -18,10 +18,10 @@
     ┌──────────────────────────────────────────────────────────────┐
     │                   Cloudflare Edge                            │
     │                                                              │
-    │   TLS termination          Tunnel: codez.yourdomain.com     │
+    │   TLS termination          Tunnel: codez.opzero.sh          │
     │   (Secure cookie works     ──────────────────────►          │
     │    because CF provides                                       │
-    │    HTTPS to the browser)   authkit.yourdomain.com           │
+    │    HTTPS to the browser)   auth.opzero.sh                   │
     │                            (MCPAuthKit Worker + D1)          │
     │                            ┌───────────────────────┐         │
     │                            │ OAuth 2.1 + PKCE      │         │
@@ -48,7 +48,7 @@
     │   │              Loopback bypass for 127.0.0.1            │   │
     │   │                                                      │   │
     │   │  /mcp      → AuthKit OAuth tokens (mat_*)            │   │
-    │   │              Validated via authkit.yourdomain.com     │   │
+    │   │              Validated via auth.opzero.sh             │   │
     │   │              /oauth/userinfo + 5-min cache            │   │
     │   │              Loopback bypass for 127.0.0.1            │   │
     │   └──────────────────────────────────────────────────────┘   │
@@ -74,7 +74,7 @@
     │   │                                                     │     │
     │   │  WebStandardStreamableHTTPServerTransport           │     │
     │   │  ┌───────────────────────────────────────────┐      │     │
-    │   │  │ 17 Tools (via CodeZClient → /api/*)      │      │     │
+    │   │  │ 17 Tools (via CodeZeroClient → /api/*)    │      │     │
     │   │  │                                           │      │     │
     │   │  │ list_projects    get_session              │      │     │
     │   │  │ list_sessions    create_session            │      │     │
@@ -207,7 +207,7 @@
          ▼
     Bun server (/mcp route)
          │
-         │  validateToken(mat_xxx) → authkit.yourdomain.com/oauth/userinfo
+         │  validateToken(mat_xxx) → auth.opzero.sh/oauth/userinfo
          │  ✓ authenticated
          │
          ▼
@@ -215,7 +215,7 @@
          │
          │  dispatch("create_session", {slug, cwd})
          ▼
-    CodeZClient.createSession()
+    CodeZeroClient.createSession()
          │
          │  POST http://127.0.0.1:4097/api/projects/:slug/sessions
          │  (loopback — auth bypassed)

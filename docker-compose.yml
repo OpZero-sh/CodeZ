@@ -1,5 +1,5 @@
 services:
-  codez:
+  codezero:
     build:
       context: .
       dockerfile: Dockerfile

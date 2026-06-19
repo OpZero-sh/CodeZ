@@ -220,6 +220,7 @@ function MessageCard({ msg }: { msg: Message }) {
 
 function MessageThread() {
   const state = useStore();
+  const sessionId = state.selected.sessionId;
   const sessionKey = getSelectedSessionKey(state.selected);
   const messages = useMemo<Message[]>(
     () => (sessionKey ? state.messages[sessionKey] ?? [] : []),
@@ -237,9 +238,9 @@ function MessageThread() {
   );
 
   useEffect(() => {
-    if (lastSessionRef.current !== sessionKey) {
+    if (lastSessionRef.current !== sessionId) {
       stickRef.current = true;
-      lastSessionRef.current = sessionKey;
+      lastSessionRef.current = sessionId;
     }
     const el = scrollRef.current;
     if (!el) return;
@@ -248,7 +249,7 @@ function MessageThread() {
         el.scrollTop = el.scrollHeight;
       });
     }
-  }, [messages, sessionKey]);
+  }, [messages, sessionId]);
 
   function onScroll(e: UIEvent<HTMLDivElement>) {
     const el = e.currentTarget;
@@ -257,7 +258,7 @@ function MessageThread() {
     stickRef.current = atBottom;
   }
 
-  if (!sessionKey) {
+  if (!sessionId) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-center space-y-2">

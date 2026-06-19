@@ -13,7 +13,7 @@ import type { EventBus } from "./bus";
 import { encodeProjectSlug, listProjects, listSessionsForProject } from "./claude/history";
 import type { Config } from "./config";
 import { loadConfig, getConfigDir } from "./config";
-import { getAccessToken, createTokenRefresher, readStoredAuth } from "./hub-auth";
+import { getAccessToken, createTokenRefresher, createAuthRecovery, readStoredAuth } from "./hub-auth";
 
 const DEFAULT_HUB_URL = "https://code.opzero.sh";
 
@@ -30,25 +30,22 @@ function machineIdPath(): string {
   return join(getConfigDir(), "machine-id");
 }
 
-export async function getStableMachineId(): Promise<string> {
-  // Ephemeral cloud machines (e.g. the Fly container) lose the on-disk
-  // machine-id file across redeploys, which would mint a new identity each
-  // boot and break the hub's wake-by-id UX. An explicit override pins it.
-  const override = process.env.CODEZ_MACHINE_ID?.trim();
-  if (override) return override;
+function userIdPath(): string {
+  return join(getConfigDir(), "hub-user-id");
+}
 
-  const path = machineIdPath();
+async function readKnownUserId(): Promise<string | undefined> {
   try {
-    const existing = (await readFile(path, "utf-8")).trim();
-    if (existing) return existing;
+    const existing = (await readFile(userIdPath(), "utf-8")).trim();
+    return existing || undefined;
   } catch {
-    // Fall through and create one.
+    return undefined;
   }
+}
 
-  const machineId = crypto.randomUUID();
+async function persistUserId(userId: string): Promise<void> {
   await mkdir(getConfigDir(), { recursive: true });
-  await writeFile(path, `${machineId}\n`, { mode: 0o600 });
-  return machineId;
+  await writeFile(userIdPath(), `${userId}\n`, { mode: 0o600 });
 }
 
 export async function loadHubConfig(): Promise<HubConfig | null> {
@@ -63,6 +60,7 @@ export async function loadHubConfig(): Promise<HubConfig | null> {
   }
   if (!url) url = DEFAULT_HUB_URL;
 
+  // Priority: env var > existing stored token > OAuth flow (only if already provisioned) > token file
   let token = process.env.CODEZ_HUB_TOKEN;
 
   // Only attempt OAuth flow if we have stored creds; otherwise running
@@ -164,6 +162,21 @@ async function collectSessions(pool: SessionPool): Promise<SessionInfo[]> {
   return sessions;
 }
 
+export async function getStableMachineId(): Promise<string> {
+  const path = machineIdPath();
+  try {
+    const existing = (await readFile(path, "utf-8")).trim();
+    if (existing) return existing;
+  } catch {
+    // Fall through and create one.
+  }
+
+  const machineId = crypto.randomUUID();
+  await mkdir(getConfigDir(), { recursive: true });
+  await writeFile(path, `${machineId}\n`, { mode: 0o600 });
+  return machineId;
+}
+
 function createCommandHandler(
   _pool: SessionPool,
   config: Config,
@@ -172,13 +185,33 @@ function createCommandHandler(
 
   return async (action, params) => {
     switch (action) {
+      case "list_projects": {
+        const res = await fetch(`${baseUrl}/api/projects`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+        }
+        return { projects: await res.json() as Record<string, unknown>[] };
+      }
+
+      case "list_sessions": {
+        const slug = params.slug as string;
+        const res = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(slug)}/sessions`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+        }
+        return { sessions: await res.json() as Record<string, unknown>[] };
+      }
+
       case "create_session": {
         const slug = params.slug as string;
         const cwd = (params.cwd as string) ?? undefined;
+        const permissionMode = (params.permissionMode as string) ?? undefined;
         const res = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(slug)}/sessions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cwd }),
+          body: JSON.stringify({ cwd, permissionMode }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -263,6 +296,7 @@ export async function startHubAgent(
   const sessions = await collectSessions(pool);
   const cpuInfo = cpus();
   const machineId = await getStableMachineId();
+  const knownUserId = await readKnownUserId();
 
   const wakeUrl = process.env.CODEZ_WAKE_URL;
   const capabilities: Record<string, unknown> = {};
@@ -286,6 +320,18 @@ export async function startHubAgent(
     repos,
     codezApiUrl: `http://127.0.0.1:${appConfig.port}`,
     onTokenRefresh: createTokenRefresher(),
+    onAuthRecovery: createAuthRecovery(),
+    ...(knownUserId ? { knownUserId } : {}),
+    onUserIdResolved: (userId) => {
+      persistUserId(userId).catch((err) => {
+        console.error("[hub] failed to persist user_id:", err instanceof Error ? err.message : err);
+      });
+    },
+    onStateChange: (event) => {
+      console.log(
+        `[hub] state ${event.previous} -> ${event.state} (attempt ${event.attempt}): ${event.reason}`,
+      );
+    },
     ...(Object.keys(capabilities).length > 0 ? { capabilities } : {}),
   };
 

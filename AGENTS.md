@@ -1,4 +1,4 @@
-# CodeZ — Agent Operating Guide
+# CodeZero — Agent Operating Guide
 
 This file is the operating manual for any agent (subagent, orchestrator, or future-Claude-session)
 working in this codebase. It supplements `CLAUDE.md` (architecture) and `Roadmap.md`
@@ -56,7 +56,7 @@ item to identify conflicts.
 
 ### What agents cannot do
 - `git add .` or `git commit`
-- Touch files in sibling OpZero repos
+- Touch files under `/Users/opz/opz/opzero-sh/OpZero.sh/`
 - Remove emojis or add them
 - Change the package name `opzero-claude`
 - Add new npm dependencies without checking `package.json` first
@@ -174,7 +174,7 @@ Read the most recent log before starting new work to avoid repeating mistakes.
 4. **Subagent streaming**: blocked. Requires channels in subagent subprocesses.
 5. **Bun.serve idleTimeout**: must be `idleTimeout: 0` for SSE streams. Don't change.
 
-## Links
+## Contact
 
-- Repo: https://github.com/OpZero-sh/CodeZ
-- Docs: see `docs/` directory and `CLAUDE.md`
+Owner: Jeff Cameron. Repo: https://github.com/OpZero-sh/CodeZero (private).
+Live: https://claude.opzero.sh

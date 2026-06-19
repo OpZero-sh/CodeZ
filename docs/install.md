@@ -1,4 +1,4 @@
-# CodeZ Installation Guide
+# CodeZero Installation Guide
 
 The supported path is `codez setup`. It is idempotent, noninteractive by
 default, and does everything from dependency install to autostart.
@@ -32,10 +32,10 @@ production hub.
 ## Docker
 
 ```bash
-docker build -t codez .
+docker build -t opzero-code .
 docker run -d -p 4097:4097 \
   -v ~/.config/opzero-claude:/root/.config/opzero-claude \
-  --restart unless-stopped codez
+  --restart unless-stopped opzero-code
 ```
 
 The container's first boot runs `codez setup --no-start --skip-autostart`
@@ -71,17 +71,3 @@ bun install && cd web && bun install && cd .. && bun run build
 bun run server/index.ts    # generates config on first run
 codez hub login            # optional: provision hub agent
 ```
-
-## Cloudflare Tunnel (optional appendix)
-
-If you want a direct HTTPS URL to this machine without going through the
-hub, use a Cloudflare Tunnel. This is the old distribution path; the hub
-is the recommended remote access route.
-
-```bash
-brew install cloudflared
-cloudflared tunnel --url http://localhost:4097
-```
-
-For persistent tunnels with a domain, see the
-[Remote Access section of the README](../README.md#remote-access-with-cloudflare-tunnel).

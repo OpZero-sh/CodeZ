@@ -23,7 +23,9 @@ export interface AuthUser {
   sub: string;
 }
 
-export type AuthResult = { ok: true; user: AuthUser; setCookie?: string } | { ok: false };
+export type AuthResult =
+  | { ok: true; user: AuthUser; setCookie?: string }
+  | { ok: false };
 
 export interface AuthProvider {
   name: string;
@@ -104,6 +106,10 @@ export interface SessionPayload {
   sub: string;
   iat: number;
   exp: number;
+  /** AuthKit refresh token (mrt_*) — present only for AuthKit sessions */
+  rt?: string;
+  /** AuthKit OAuth client_id — needed to exchange refresh tokens */
+  cid?: string;
 }
 
 async function hmacKey(secret: string): Promise<CryptoKey> {

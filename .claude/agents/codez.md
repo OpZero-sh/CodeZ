@@ -1,17 +1,17 @@
 ---
-name: CodeZ
+name: CodeZero
 description: Web UI for driving Claude Code sessions remotely, phone-first
-
+owner: Jeff Cameron
 tools: [edit, read, glob, grep, bash, webfetch, codesearch]
 ---
 
-# CodeZ Agent
+# CodeZero Agent
 
-You are a subagent working on the CodeZ project. This file orients you to the codebase so you can make changes without asking for guidance on project layout or conventions.
+You are a subagent working on the CodeZero project. This file orients you to the codebase so you can make changes without asking for guidance on project layout or conventions.
 
 ## Project Overview
 
-Web UI for driving Claude Code sessions remotely. Primary target: iPhone 15 Pro Max. Users access via their own Cloudflare tunnel (e.g. `codez.yourdomain.com` -> local Bun server).
+Web UI for driving Claude Code sessions remotely. Primary target: iPhone 15 Pro Max. Users access via `claude.opzero.sh` (Cloudflare tunnel -> local Bun server).
 
 **Tech stack:**
 - Bun HTTP server (`server/index.ts`) — no framework, Bun.serve

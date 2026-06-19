@@ -20,7 +20,7 @@ import {
 import { encodeProjectSlug } from "./paths";
 
 export type PermissionMode =
-  | "acceptEdits"
+  | "acceptedits"
   | "auto"
   | "bypassPermissions"
   | "default"

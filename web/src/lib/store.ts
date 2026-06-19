@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { api } from "./api";
 import { hubApi, type HubMachine } from "./hubApi";
+import { hasHubSession, refreshHubToken } from "./hubAuth";
 import {
   applyDelta,
   applyMessageCreated,
@@ -188,6 +189,18 @@ async function withFreshHubToken<T>(fn: (token: string) => Promise<T>): Promise<
 }
 
 async function apiHubToken(): Promise<string | null> {
+  // Hosted mode (served from the hub Worker): there is no local /api/hub/token;
+  // refresh the MCPAuthKit token family directly. hasHubSession() is only true
+  // once the browser PKCE flow has run, so local mode falls through unchanged.
+  if (hasHubSession()) {
+    const refreshed = await refreshHubToken();
+    if (refreshed) {
+      setState({ hubEnabled: true, hubToken: refreshed });
+      return refreshed;
+    }
+    setState({ hubEnabled: false, hubToken: null, remote: {}, hubConnected: false });
+    return null;
+  }
   const res = await fetch("/api/hub/token", { credentials: "include" });
   if (!res.ok) {
     setState({ hubEnabled: false, hubToken: null, remote: {}, hubConnected: false });
@@ -418,6 +431,10 @@ export const store = {
   subscribe,
   getSnapshot,
 
+  markProjectsLoaded() {
+    setState({ projectsLoaded: true });
+  },
+
   setHubAuth(hubEnabled: boolean, token: string | null, localMachineId?: string | null) {
     setState({
       hubEnabled,
@@ -467,6 +484,10 @@ export const store = {
       }
       setState({ remote: nextRemote });
       for (const machine of machines) {
+        // Offline machines can't answer list_projects; asking only yields a
+        // "not connected" error. They still appear in the picker (greyed) via
+        // state.remote — skip the doomed request.
+        if (!machine.online) continue;
         this.loadRemoteProjects(machine.machineId).catch(() => {});
       }
     } catch (err) {
@@ -481,8 +502,11 @@ export const store = {
       for (const project of projects) {
         this.loadRemoteSessions(machineId, project.slug).catch(() => {});
       }
-    } catch (err) {
-      setState({ errors: { ...state.errors, [`remoteProjects:${machineId}`]: (err as Error).message } });
+    } catch {
+      // One machine's project list failing (offline, or an older agent that
+      // doesn't know list_projects — e.g. cloudchamber) must not paint a global
+      // red banner. Leave its projects empty; it still shows in the picker.
+      setRemoteMachine(machineId, { projects: [] });
     }
   },
 
@@ -657,15 +681,13 @@ export const store = {
   },
 
   async resolvePermission(sessionKey: string, requestId: string, behavior: "allow" | "deny") {
-    const colonIdx = sessionKey.indexOf(":");
-    const source = colonIdx >= 0 ? sessionKey.slice(0, colonIdx) : sessionKey;
-    const sessionId = colonIdx >= 0 ? sessionKey.slice(colonIdx + 1) : "";
+    const [source, sessionId] = sessionKey.split(":", 2);
     const list = state.permissionRequests[sessionKey] ?? [];
     const next = list.filter((r) => r.requestId !== requestId);
     setState({ permissionRequests: { ...state.permissionRequests, [sessionKey]: next } });
     if (source !== "local") return;
     try {
-      await api.resolvePermission(sessionId, requestId, behavior);
+      await api.resolvePermission(sessionId!, requestId, behavior);
     } catch (err) {
       setState({ errors: { ...state.errors, [`permission:${sessionKey}:${requestId}`]: (err as Error).message } });
     }

@@ -174,6 +174,15 @@ const out = { ...src };
 out.name = distro.name;            // opzero-claude (public identity, unchanged)
 out.bin = distro.bin ?? src.bin;
 
+// Preserve distro-only publishing fields that don't exist in the source.
+if (distro.version) out.version = distro.version;
+if (distro.files) out.files = distro.files;
+if (distro.engines) out.engines = distro.engines;
+if (distro.scripts && distro.scripts.prepublishOnly) {
+  out.scripts = out.scripts || {};
+  out.scripts.prepublishOnly = distro.scripts.prepublishOnly;
+}
+
 out.dependencies = { ...(src.dependencies || {}) };
 if (out.dependencies["@opzero/codez-hub-client"]) {
   out.dependencies["@opzero/codez-hub-client"] = `^${hubVersion}`;

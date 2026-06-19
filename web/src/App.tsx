@@ -14,6 +14,7 @@ import {
   GitFork,
   RefreshCw,
   Plug,
+  Settings,
 } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -29,6 +30,7 @@ import UatPanel from "@/components/UatPanel";
 import OnboardingSheet, { getOnboardingDone } from "@/components/OnboardingSheet";
 import TeamDashboard from "@/components/TeamDashboard";
 import { McpMonitorPanel } from "@/components/McpMonitorPanel";
+import { SettingsPanel } from "@/components/SettingsPanel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +48,7 @@ import { useEventStream } from "@/hooks/useEventStream";
 import { useHubStream } from "@/hooks/useHubStream";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { authApi } from "@/lib/authClient";
+import { getHubAccessToken, cachedHubToken, hasHubSession } from "@/lib/hubAuth";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -133,6 +136,7 @@ function Header({
   onOpenOpzero,
   onOpenUat,
   onOpenMcpMonitor,
+  onOpenSettings,
   teamDashboardCount,
   mcpCallCount,
 }: {
@@ -145,6 +149,7 @@ function Header({
   onOpenOpzero: () => void;
   onOpenUat: () => void;
   onOpenMcpMonitor: () => void;
+  onOpenSettings: () => void;
   teamDashboardCount: number;
   mcpCallCount: number;
 }) {
@@ -152,7 +157,9 @@ function Header({
   const [restartOpen, setRestartOpen] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const state = useStore();
-  const { connected } = useEventStream();
+  const { connected: localConnected } = useEventStream();
+  // In hosted mode the realtime link is the hub WebSocket, not the local SSE.
+  const connected = localConnected || (state.hubEnabled && state.hubConnected);
   const sessionId = state.selected.sessionId;
   const slug = state.selected.slug;
 
@@ -226,18 +233,18 @@ function Header({
             <Info className="h-4 w-4" />
           </button>
         )}
-        {session && state.selected.source === "local" && (
+        {session && (
           <button
             type="button"
             onClick={() => {
-              if (session && slug) {
+              if (session && slug && state.selected.source === "local") {
                 store.forkSession(slug, session.id).catch(() => {});
               }
             }}
-            disabled={state.selected.source !== "local"}
             className="h-9 w-9 flex items-center justify-center rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
             aria-label="Fork session"
             title="Fork into new session"
+            disabled={state.selected.source !== "local"}
           >
             <GitFork className="h-4 w-4" />
           </button>
@@ -300,6 +307,15 @@ function Header({
         </button>
         <button
           type="button"
+          onClick={onOpenSettings}
+          className="h-9 w-9 flex items-center justify-center rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
+          aria-label="Services & settings"
+          title="Services & settings"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
           onClick={onOpenOnboarding}
           className="h-9 w-9 flex items-center justify-center rounded-md hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
           aria-label="Help"
@@ -354,7 +370,7 @@ function Header({
             <DialogHeader>
               <DialogTitle>Restart server?</DialogTitle>
               <DialogDescription>
-                The CodeZ server will restart. Active sessions will be disposed and the page will reconnect automatically.
+                The CodeZero server will restart. Active sessions will be disposed and the page will reconnect automatically.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -429,6 +445,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
   const [opzeroOpen, setOpzeroOpen] = useState(false);
   const [uatOpen, setUatOpen] = useState(false);
   const [mcpMonitorOpen, setMcpMonitorOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const state = useStore();
   const sessionId = state.selected.sessionId;
   const runningTaskCount = state.runningTasks.filter((t) => t.state === "running").length;
@@ -438,6 +455,16 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
   useHubStream();
 
   useEffect(() => {
+    // Hosted mode (code.opzero.sh): there is no local bun server. Projects,
+    // sessions, and markers all live on remote machines, reached via the hub
+    // Worker with the mat_ Bearer token (loadRemoteMachines, below). The local
+    // /api/projects and /api/state routes don't exist on the Worker, so calling
+    // them only yields a spurious "Unauthorized" banner. Skip them entirely and
+    // mark the local project list as resolved so the sidebar stops spinning.
+    if (hasHubSession()) {
+      store.markProjectsLoaded();
+      return;
+    }
     store.loadProjects();
     store.loadMarkers();
   }, []);
@@ -447,6 +474,19 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     (async () => {
       const provider = await authApi.provider();
       if (cancelled) return;
+      if (provider === "authkit-pkce") {
+        // Hosted mode: the access token was obtained by the auth gate's PKCE
+        // flow. There is no local machine, so machineId is null; the picker
+        // lists every machine via loadRemoteMachines().
+        const token = cachedHubToken();
+        if (token) {
+          store.setHubAuth(true, token, null);
+          store.loadRemoteMachines().catch(() => {});
+        } else {
+          store.setHubAuth(false, null);
+        }
+        return;
+      }
       if (provider !== "authkit") {
         store.setHubAuth(false, null);
         return;
@@ -554,6 +594,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             onOpenOpzero={() => setOpzeroOpen(true)}
             onOpenUat={() => setUatOpen(true)}
             onOpenMcpMonitor={() => setMcpMonitorOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
             teamDashboardCount={runningTaskCount}
             mcpCallCount={activeMcpCallCount}
           />
@@ -605,6 +646,10 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             <UatPanel onClose={() => setUatOpen(false)} />
           </div>
         )}
+
+        {settingsOpen && (
+          <SettingsPanel onClose={() => setSettingsOpen(false)} />
+        )}
       </div>
     </TooltipProvider>
   );
@@ -621,15 +666,25 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
-    authApi
-      .me()
-      .then((user) => {
+    (async () => {
+      const provider = await authApi.provider();
+      if (cancelled) return;
+      if (provider === "authkit-pkce") {
+        // Hosted at code.opzero.sh: the MCPAuthKit mat_ token is the session,
+        // there is no cookie login. getHubAccessToken() may navigate the page to
+        // MCPAuthKit (and never resolve) when a fresh authorization is needed.
+        const token = await getHubAccessToken();
         if (cancelled) return;
+        setAuth(token ? { phase: "authed", sub: "hub" } : { phase: "unauthed" });
+        return;
+      }
+      const user = await authApi.me();
+      if (!cancelled) {
         setAuth(user ? { phase: "authed", sub: user.sub } : { phase: "unauthed" });
-      })
-      .catch(() => {
-        if (!cancelled) setAuth({ phase: "unauthed" });
-      });
+      }
+    })().catch(() => {
+      if (!cancelled) setAuth({ phase: "unauthed" });
+    });
     return () => {
       cancelled = true;
     };

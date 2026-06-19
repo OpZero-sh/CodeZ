@@ -28,6 +28,28 @@ export interface DailySnapshot {
   totalOutputTokens: number;
 }
 
+export type ServiceHealthStatus =
+  | "ok"
+  | "degraded"
+  | "error"
+  | "unconfigured"
+  | "unknown";
+
+export interface ServiceEndpointRow {
+  id: string;
+  label: string;
+  url: string | null;
+  status: ServiceHealthStatus;
+  detail?: string;
+}
+
+export interface ServicesSettingsPayload {
+  generatedAt: number;
+  baseUrl: string;
+  authProvider: string;
+  services: ServiceEndpointRow[];
+}
+
 interface McpServerConfig {
   name: string;
   command: string;
@@ -214,4 +236,5 @@ export const api = {
     req<ObservabilityStats>("/api/observability/stats"),
   restartServer: () =>
     req<{ ok: true; restarting: true }>("/api/server/restart", { method: "POST" }),
+  getServicesSettings: () => req<ServicesSettingsPayload>("/api/settings/services"),
 };

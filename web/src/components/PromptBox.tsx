@@ -132,7 +132,7 @@ function PromptBox() {
   const currentSession = findSession(state, state.selected.source, state.selected.slug, sessionId);
   const remoteMachine = state.selected.source && state.selected.source !== "local"
     ? state.remote[state.selected.source]?.machine
-    : undefined;
+    : null;
 
   const slashCommands = useMemo(() => {
     const fromMeta = currentSession?.metadata?.slashCommands;
@@ -156,7 +156,7 @@ function PromptBox() {
     setValue("");
     setSendError(null);
     setAttachments([]);
-  }, [sessionKey]);
+  }, [sessionId]);
 
   useEffect(() => {
     return () => {
@@ -310,15 +310,15 @@ function PromptBox() {
       }}
     >
       <div className="max-w-4xl mx-auto w-full px-3 pt-2">
-        {machineOffline && (
-          <div className="px-1 pb-2 text-[11px] text-muted-foreground">
-            Remote machine is offline. Cached history is read-only until it reconnects.
-          </div>
-        )}
         {sending && (
           <div className="flex items-center justify-end gap-1 text-[10px] text-primary px-1 pb-1">
             <Loader2 className="h-3 w-3 animate-spin" />
             streaming — Esc to stop
+          </div>
+        )}
+        {machineOffline && (
+          <div className="px-1 pb-2 text-[11px] text-muted-foreground">
+            Remote machine is offline. Cached history is read-only until it reconnects.
           </div>
         )}
         <QuickActions disabled={disabled} onInsert={insertText} />
@@ -403,8 +403,8 @@ function PromptBox() {
                   size="icon"
                   variant="ghost"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={disabled || isRemote}
-                  aria-label="Attach file"
+                   disabled={disabled || isRemote}
+                   aria-label="Attach file"
                   className="text-muted-foreground hover:text-primary"
                 >
                   <Paperclip className="h-4 w-4" />

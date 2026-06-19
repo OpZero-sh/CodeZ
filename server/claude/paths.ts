@@ -1,8 +1,12 @@
 import { homedir } from "os";
 import { join } from "path";
 
+export function claudeConfigRoot(): string {
+  return process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
+}
+
 export function claudeProjectsRoot(): string {
-  return join(homedir(), ".claude", "projects");
+  return join(claudeConfigRoot(), "projects");
 }
 
 export function encodeProjectSlug(absPath: string): string {
@@ -11,4 +15,8 @@ export function encodeProjectSlug(absPath: string): string {
 
 export function decodeProjectSlug(slug: string): string {
   return slug.replace(/^-/, "/").replace(/-/g, "/");
+}
+
+export function resolveSessionCwd(slug: string, _sessionId?: string): string {
+  return decodeProjectSlug(slug);
 }

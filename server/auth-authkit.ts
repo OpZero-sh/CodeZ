@@ -183,6 +183,8 @@ export async function handleAuthKitCallback(
     const jwt = await signJwt(
       {
         sub: tokens.accessToken,
+        rt: tokens.refreshToken,
+        cid: flow.clientId,
         iat: now,
         exp: now + SESSION_MAX_AGE_SECONDS,
       },
@@ -204,7 +206,55 @@ export async function handleAuthKitCallback(
 }
 
 /**
+ * Refresh an expired mat_ access token using the mrt_ refresh token.
+ * Returns the new access token on success, null on failure.
+ */
+async function refreshAccessToken(
+  refreshToken: string,
+  clientId: string,
+): Promise<{ accessToken: string; refreshToken: string } | null> {
+  try {
+    const res = await fetch(`${AUTHKIT_URL}/oauth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }).toString(),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      access_token: string;
+      refresh_token: string;
+    };
+    return {
+      accessToken: body.access_token,
+      refreshToken: body.refresh_token,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate a mat_ access token against the AuthKit userinfo endpoint.
+ * Returns true if the token is valid, false otherwise.
+ */
+async function validateAccessToken(accessToken: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${AUTHKIT_URL}/oauth/userinfo`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Create an AuthProvider that validates session cookies containing mat_ tokens.
+ * Transparently refreshes expired access tokens using the stored refresh token.
  */
 export function createAuthKitAuthProvider(config: Config): AuthProvider {
   return {
@@ -212,7 +262,6 @@ export function createAuthKitAuthProvider(config: Config): AuthProvider {
     loginUrl: "/api/auth/login",
     logoutUrl: "/api/auth/logout",
     async verify(req: Request): Promise<AuthResult> {
-      // Check session cookie
       const cookies = parseCookies(req.headers.get("cookie"));
       const token = cookies[SESSION_COOKIE_NAME];
       if (!token) return { ok: false };
@@ -220,12 +269,49 @@ export function createAuthKitAuthProvider(config: Config): AuthProvider {
       const payload = await verifyJwt(token, config.authSecret);
       if (!payload) return { ok: false };
 
-      // payload.sub holds the mat_ access token
-      if (typeof payload.sub === "string" && payload.sub.startsWith("mat_")) {
+      if (typeof payload.sub !== "string" || !payload.sub.startsWith("mat_")) {
+        return { ok: false };
+      }
+
+      // Try the current access token first
+      const valid = await validateAccessToken(payload.sub);
+      if (valid) {
         return { ok: true, user: { sub: payload.sub } };
       }
 
-      return { ok: false };
+      // Access token expired — attempt refresh if we have credentials
+      if (!payload.rt || !payload.cid) {
+        // Old cookie without refresh token; can't recover
+        return { ok: false };
+      }
+
+      const refreshed = await refreshAccessToken(payload.rt, payload.cid);
+      if (!refreshed) {
+        return { ok: false };
+      }
+
+      // Refresh succeeded — user is authenticated.
+      // Build a new session cookie so subsequent requests use the fresh token.
+      const now = Math.floor(Date.now() / 1000);
+      const newJwt = await signJwt(
+        {
+          sub: refreshed.accessToken,
+          rt: refreshed.refreshToken,
+          cid: payload.cid,
+          iat: now,
+          exp: now + SESSION_MAX_AGE_SECONDS,
+        },
+        config.authSecret,
+      );
+
+      const secure = isSecureRequest(req);
+      const setCookie = buildSessionCookie(newJwt, secure);
+
+      return {
+        ok: true,
+        user: { sub: refreshed.accessToken },
+        setCookie,
+      };
     },
   };
 }

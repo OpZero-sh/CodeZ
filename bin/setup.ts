@@ -1,11 +1,11 @@
-import { hostname, platform } from "node:os";
+import { platform } from "node:os";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, saveConfig, getConfigPath, getConfigDir } from "../server/config";
-import { loginHeadless, readStoredAuth, readStoredCredentials, AUTH_FILE_PATH } from "../server/hub-auth";
+import { login, loginHeadless, isHeadless, readStoredAuth, AUTH_FILE_PATH } from "../server/hub-auth";
 
 export interface SetupOptions {
   skipHub: boolean;
@@ -114,32 +114,55 @@ async function ensureHubAuth(): Promise<{ provisioned: boolean; email?: string }
   }
   const stored = await readStoredAuth();
   if (stored && stored.refreshToken && !(await refreshTokenExpired(stored))) {
-    const existing = await readStoredCredentials();
-    if (existing) {
-      console.log(`[setup] ✓ hub agent already provisioned (email: ${existing.email})`);
+    if (stored.email) {
+      console.log(`[setup] ✓ hub agent already linked to ${stored.email}`);
     } else {
       console.log(`[setup] hub auth already provisioned at ${AUTH_FILE_PATH}`);
     }
-    return { provisioned: false, email: existing?.email };
+    return { provisioned: false, email: stored.email };
   }
 
-  const email = process.env.HUB_EMAIL ?? `opz-${hostname()}@opzero.local`;
-  const password = process.env.HUB_PASSWORD ?? randomBytes(18).toString("base64url");
   const authkitUrl = process.env.AUTHKIT_URL ?? DEFAULT_AUTHKIT_URL;
 
-  console.log(`[setup] provisioning hub machine agent at ${authkitUrl}`);
-  const result = await loginHeadless({ email, password, authkitUrl });
+  // Headless / scripted path: provision under the OWNER's account (HUB_EMAIL),
+  // never a synthetic per-host identity. The hub keys every machine to its
+  // token's user_id, so a throwaway account is invisible in the owner's hub.
+  if (isHeadless() || process.env.HUB_EMAIL) {
+    const email = process.env.HUB_EMAIL;
+    if (!email) {
+      throw new Error(
+        "headless machine: no browser to log in and HUB_EMAIL is not set. Set " +
+        "HUB_EMAIL (and HUB_PASSWORD) to your OpZero account, set CODEZ_HUB_TOKEN, " +
+        "or copy a logged-in machine's hub-auth.json here. Do not use a throwaway " +
+        "account — a machine under the wrong user_id never appears in your hub.",
+      );
+    }
+    const password = process.env.HUB_PASSWORD ?? randomBytes(18).toString("base64url");
+    console.log(`[setup] provisioning hub machine agent for ${email} at ${authkitUrl}`);
+    const result = await loginHeadless({ email, password, authkitUrl });
+    banner([
+      "CodeZ Hub: machine agent provisioned",
+      "",
+      `  account:  ${result.email}`,
+      `  password: ${result.password}`,
+      "",
+      `Saved to ${AUTH_FILE_PATH} (mode 0600). Back this file up.`,
+    ]);
+    return { provisioned: true, email: result.email };
+  }
 
+  // Interactive path (default): browser OAuth under the owner's AuthKit account,
+  // so this machine shows up under the user's hosted login at the hub.
+  console.log(`[setup] linking this machine to your OpZero account (opening browser at ${authkitUrl})`);
+  const auth = await login(authkitUrl);
   banner([
-    "CodeZ Hub: machine agent provisioned",
+    "CodeZ Hub: machine linked to your account",
     "",
-    `  email:    ${result.email}`,
-    `  password: ${result.password}`,
+    auth.email ? `  account: ${auth.email}` : "  account: (logged in)",
     "",
-    `Saved to ${AUTH_FILE_PATH} (mode 0600). Back this file up.`,
-    "Raw creds are now persisted in the auth file; recovery is local.",
+    `Saved to ${AUTH_FILE_PATH} (mode 0600).`,
   ]);
-  return { provisioned: true, email: result.email };
+  return { provisioned: true, email: auth.email };
 }
 
 async function persistHubUrl(): Promise<void> {

@@ -1,6 +1,6 @@
 {
-  "name": "CodeZ",
-  "short_name": "CodeZ",
+  "name": "CodeZero",
+  "short_name": "CodeZero",
   "description": "Remote Claude Code sessions in a dark, phone-first install shell.",
   "id": "/",
   "start_url": "/",

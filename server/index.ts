@@ -19,6 +19,8 @@ import { SessionPool } from "./claude/pool";
 import { ChannelBridgePool } from "./claude/channel-bridge";
 import { SelfHeal } from "./self-heal";
 import { loadHubConfig, startHubAgent } from "./hub";
+import { setHubMachineAgent } from "./hub-agent-registry";
+import { servicesSettingsRoute } from "./routes/services-settings";
 import type { HubMachineAgent } from "@opzero/codez-hub-client";
 
 const config = await loadConfig();
@@ -45,7 +47,7 @@ const server = Bun.serve({
     const authed = await withAuth(req, config, authProvider);
     if (authed instanceof Response) return authed;
 
-    // If the auth provider refreshed a token, attach the new cookie to the response.
+    // Helper: if the auth provider refreshed a token, attach the new cookie
     const maybeAttachCookie = (res: Response): Response => {
       if (!authed.setCookie) return res;
       const cloned = new Response(res.body, res);
@@ -62,7 +64,7 @@ const server = Bun.serve({
         if (url.pathname === "/api/auth/login") return handleAuthKitLogin(req);
         if (url.pathname === "/api/auth/callback") return handleAuthKitCallback(req, config);
       }
-      return authRoutes(req, config, authProvider);
+      return maybeAttachCookie(await authRoutes(req, config, authProvider));
     }
 
     // MCP transport — before other routes since it handles its own auth
@@ -71,6 +73,9 @@ const server = Bun.serve({
 
     if (url.pathname === "/api/health") return healthRoute(req);
     if (url.pathname === "/api/health/details") return healthDetailsRoute(req);
+    if (url.pathname === "/api/settings/services") {
+      return maybeAttachCookie(await servicesSettingsRoute(req, config));
+    }
     if (url.pathname === "/api/server/restart") return restartRoute(req);
     if (url.pathname === "/api/hub/token") return maybeAttachCookie(await hubTokenRoute(req, authed.user));
     if (url.pathname === "/api/events") return eventsRoute(req, bus);
@@ -79,17 +84,17 @@ const server = Bun.serve({
     if (url.pathname === "/api/mcp/servers") return mcpServersApiRoute(req);
     if (url.pathname === "/api/mcp/metrics") return mcpMetricsRoute(req);
     if (url.pathname === "/api/uat/run" && req.method === "POST") {
-      return uatRunRoute(req, config);
+      return maybeAttachCookie(await uatRunRoute(req, config));
     }
     if (url.pathname.startsWith("/api/observability")) {
-      return observabilityRoutes(req);
+      return maybeAttachCookie(await observabilityRoutes(req));
     }
     if (url.pathname.startsWith("/api/projects")) {
-      if (req.method === "POST") return sessionsRoutes(req, pool, bridges);
-      return projectsRoutes(req, pool);
+      if (req.method === "POST") return maybeAttachCookie(await sessionsRoutes(req, pool, bridges));
+      return maybeAttachCookie(await projectsRoutes(req, pool));
     }
     if (url.pathname.startsWith("/api/sessions"))
-      return sessionsRoutes(req, pool, bridges);
+      return maybeAttachCookie(await sessionsRoutes(req, pool, bridges));
 
     return serveStatic(req);
   },
@@ -108,15 +113,19 @@ let hubAgent: HubMachineAgent | null = null;
 loadHubConfig().then(async (hubConfig) => {
   if (!hubConfig) {
     console.warn("[hub] skipping — no credentials configured (run 'codez hub login')");
+    setHubMachineAgent(null);
     return;
   }
   try {
     hubAgent = await startHubAgent(hubConfig, config, pool, bus);
+    setHubMachineAgent(hubAgent);
   } catch (err) {
     console.error("[hub] failed to connect:", err instanceof Error ? err.message : err);
+    setHubMachineAgent(null);
   }
 }).catch((err) => {
   console.error("[hub] startup error:", err);
+  setHubMachineAgent(null);
 });
 
 let shuttingDown = false;
@@ -129,6 +138,7 @@ async function shutdown(signal: string): Promise<void> {
   if (hubAgent) {
     hubAgent.disconnect();
     hubAgent = null;
+    setHubMachineAgent(null);
   }
   try {
     await pool.disposeAll();

@@ -1,5 +1,5 @@
 /**
- * Bridges the CodeZ SSE event stream into a pollable buffer for MCP tools.
+ * Bridges the CodeZero SSE event stream into a pollable buffer for MCP tools.
  * MCP tools are request/response, so they can't hold open a streaming connection
  * during a single tool call. EventPoller maintains the SSE connection in the
  * background and lets tools drain buffered events on demand.
@@ -10,6 +10,7 @@ export class EventPoller {
   private connected = false;
   private backoff = 1000;
   private waiters: Array<() => void> = [];
+  private lastActivity = Date.now();
 
   constructor(baseUrl: string = "http://127.0.0.1:4097") {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
@@ -66,6 +67,7 @@ export class EventPoller {
         const res = await fetch(`${this.baseUrl}/api/events`);
         if (!res.ok || !res.body) throw new Error(`SSE ${res.status}`);
         this.backoff = 1000;
+        this.lastActivity = Date.now();
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let partial = "";
@@ -73,6 +75,7 @@ export class EventPoller {
         while (this.connected) {
           const { done, value } = await reader.read();
           if (done) break;
+          this.lastActivity = Date.now();
           partial += decoder.decode(value, { stream: true });
           // SSE frames are delimited by double newlines
           const frames = partial.split("\n\n");
@@ -93,8 +96,15 @@ export class EventPoller {
         reader.cancel().catch(() => {});
       } catch {
         if (!this.connected) break;
+        // If the gap since last activity is large (>= 30s), the machine
+        // likely slept. Reset backoff so we reconnect immediately.
+        const gap = Date.now() - this.lastActivity;
+        if (gap >= 30_000) {
+          this.backoff = 1000;
+        }
         await new Promise((r) => setTimeout(r, this.backoff));
         this.backoff = Math.min(this.backoff * 2, 30_000);
+        this.lastActivity = Date.now();
       }
     }
   }

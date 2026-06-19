@@ -1,5 +1,7 @@
 import { join } from "path";
+import { readdir, stat } from "fs/promises";
 import { getConfigDir } from "./config";
+import { claudeProjectsRoot } from "./claude/paths";
 
 const STATE_FILE = join(getConfigDir(), "state.json");
 
@@ -68,7 +70,57 @@ function set<K extends keyof State>(key: K, value: State[K]): void {
   state[key] = value;
 }
 
+async function seedRecentCwds(): Promise<void> {
+  if (state.recentCwds.length > 0) return;
+  const projectsRoot = claudeProjectsRoot();
+  try {
+    const slugs = await readdir(projectsRoot);
+    const cwds = new Set<string>();
+    for (const slug of slugs) {
+      if (!slug.startsWith("-")) continue;
+      const dir = join(projectsRoot, slug);
+      let files: string[];
+      try {
+        files = await readdir(dir);
+      } catch { continue; }
+      const jsonl = files.filter((f) => f.endsWith(".jsonl"));
+      if (jsonl.length === 0) continue;
+      // Read cwd from the most recent JSONL
+      const sorted = await Promise.all(
+        jsonl.slice(0, 5).map(async (f) => {
+          const p = join(dir, f);
+          const s = await stat(p).catch(() => null);
+          return { path: p, mtime: s?.mtimeMs ?? 0 };
+        }),
+      );
+      sorted.sort((a, b) => b.mtime - a.mtime);
+      for (const { path: filePath } of sorted.slice(0, 1)) {
+        try {
+          const file = Bun.file(filePath);
+          const head = await file.slice(0, 4096).text();
+          for (const line of head.split("\n")) {
+            if (!line) continue;
+            try {
+              const rec = JSON.parse(line);
+              if (typeof rec.cwd === "string" && rec.cwd.startsWith("/")) {
+                cwds.add(rec.cwd);
+                break;
+              }
+            } catch { continue; }
+          }
+        } catch { continue; }
+      }
+      if (cwds.size >= 20) break;
+    }
+    if (cwds.size > 0) {
+      state.recentCwds = Array.from(cwds).slice(0, 20);
+      await saveState();
+    }
+  } catch {}
+}
+
 await loadState();
+await seedRecentCwds();
 
 export const stateStore = {
   get,

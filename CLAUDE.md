@@ -1,6 +1,6 @@
-# CodeZ — Project Guide
+# CodeZero — Project Guide
 
-Product name: **CodeZ**. Package / repo / on-disk name: `opzero-claude`
+Product name: **CodeZero**. Package / repo / on-disk name: `opzero-claude`
 (unchanged to avoid breaking things — only the UI-visible brand changes).
 
 ## Getting started
@@ -32,7 +32,7 @@ distributable app later.
 ```
   Browser (React 19 SPA)
        |
-       |  HTTPS via Cloudflare tunnel  (codez.yourdomain.com -> 127.0.0.1:4097)
+       |  HTTPS via Cloudflare tunnel  (claude.opzero.sh -> 127.0.0.1:4097)
        v
   Bun HTTP server (server/index.ts)
        |
@@ -58,7 +58,7 @@ Every real-time state change flows through the EventBus as a typed
 `SSEEvent`. The SPA subscribes once to `/api/events` and dispatches events
 into an immutable client store backed by `useSyncExternalStore`.
 
-External agents can also control CodeZ programmatically via the remote
+External agents can also control CodeZero programmatically via the remote
 MCP server at `packages/codezero-mcp/`:
 
 ```
@@ -67,16 +67,16 @@ MCP server at `packages/codezero-mcp/`:
        |  MCP Streamable HTTP (POST/GET/DELETE)
        |  http://127.0.0.1:4098/mcp
        v
-  codez-mcp (Bun HTTP server, packages/codezero-mcp/index.ts)
+  codezero-mcp (Bun HTTP server, packages/codezero-mcp/index.ts)
        |
        |  HTTP REST (loopback bypass, no auth)
        v
-  CodeZ Bun server (127.0.0.1:4097)
+  CodeZero Bun server (127.0.0.1:4097)
 ```
 
 ## Quick commands
 
-From the project root:
+From `~/opz/opzero-claude/`:
 
 ```bash
 bun install                 # once
@@ -208,7 +208,7 @@ opzero-claude/
   packages/
     opzero-channel/       MCP plugin loaded by terminal `claude` for bidirectional
                           channel relay. Stdio transport, loopback HTTP bridge.
-    codezero-mcp/         Remote MCP server giving agents full control over CodeZ.
+    codezero-mcp/         Remote MCP server giving agents full control over CodeZero.
       index.ts              Bun.serve entry on :4098, WebStandardStreamableHTTPServerTransport
       client.ts             HTTP client wrapping all /api/* endpoints on :4097
       tools.ts              17 MCP tool definitions + dispatch handler
@@ -549,6 +549,9 @@ When using background agents to parallelize work:
 
 ## Commit conventions
 
+- Git author: `Jeff Cameron <jcameronjeff@gmail.com>`. Override per-commit
+  with `-c user.email=... -c user.name=...` because the system git
+  identity differs.
 - Messages: Conventional-commits-ish. `fix:`, `feat:`, `chore:`, etc.
   Title under 72 chars. Body explains *why*.
 - Always include the Claude Code co-author trailer:
@@ -563,14 +566,26 @@ When using background agents to parallelize work:
 
 ### Cloudflare tunnel
 
-Each deployment uses its own named tunnel and domain. Config at
-`~/.cloudflared/config.yml`. The tunnel routes HTTPS traffic from
-your domain to `http://127.0.0.1:4097`.
+The named tunnel `opencode` (UUID
+`5d370ac9-febb-45b8-ae35-8e0b882ba986`) routes two hostnames:
 
-If you edit the config, kill the process and relaunch it — `SIGHUP`
-terminates cloudflared, it doesn't hot-reload.
+```
+claude.open0p.com -> http://127.0.0.1:4097   (this project)
+code.open0p.com   -> http://127.0.0.1:4096   (opencode instance)
+```
 
-See the README for full tunnel setup instructions.
+Config at `~/.cloudflared/config.yml`. Tunnel currently runs as a
+backgrounded `nohup cloudflared tunnel run opencode`. If you edit the
+config, kill the process and relaunch it — `SIGHUP` terminates
+cloudflared, it doesn't hot-reload.
+
+To add a new hostname:
+
+```bash
+cloudflared tunnel route dns opencode <host>.open0p.com
+# then edit ~/.cloudflared/config.yml to add ingress before the catch-all
+# then restart the tunnel
+```
 
 ### launchd autostart
 
@@ -598,7 +613,9 @@ Logs at `.logs/server.out.log` and `.logs/server.err.log`. Status:
   GOTCHAS.
 - The `Secure` cookie attribute in `server/auth.ts`. Tempting to remove
   for local HTTP testing; don't — use the loopback bypass instead.
-- Any sibling OpZero repos — they have their own CLAUDE.md files.
+- Any file under `/Users/opz/opz/opzero-sh/OpZero.sh/` — that's the
+  sibling OpZero product we *import from*, not edit. It has its own
+  CLAUDE.md with a strict DO NOT TOUCH list.
 
 ## Channels
 
@@ -628,7 +645,7 @@ See `Roadmap.md` for full list with tiering. Key remaining items:
 - **Cross-session team dashboard** — needs `task.started`/`task.finished` events.
 - **Paste-image / file-reference** — clipboard paste + multipart content blocks.
 - **Markers** — bookmark system for in-session flagging.
-- **CodeZ memory** — persistent state store for preferences, markers, cost
+- **CodeZero memory** — persistent state store for preferences, markers, cost
   snapshots; enables items 14, 10, and personalization.
 - **iMessage relay** — depends on Channels E2E verification.
 - **Session tree by repo name** — group sidebar by git remote instead of slug.
@@ -645,7 +662,7 @@ See `Roadmap.md` for full list with tiering. Key remaining items:
 - **Command palette** — Cmd+K shipped.
 - **Cloudflare Access** — provider shipped; user config required.
 - **Auto-memory** — read-only memory viewer shipped.
-- **.claude/agents/codez.md** — shipped (item 19).
+- **.claude/agents/codezero.md** — shipped (item 19).
 - **Remote MCP server** — `packages/codezero-mcp/` shipped. 17 tools over
   Streamable HTTP at `:4098`. Agents connect via
   `{"type":"http","url":"http://127.0.0.1:4098/mcp"}`.

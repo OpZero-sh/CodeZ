@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { hostname } from "node:os";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 
@@ -20,7 +19,7 @@ Commands:
     --no-start              Do not start the server
     --with-desktop-control  Also install computer-use MCP (future)
   serve, start      Run the server in the foreground
-  hub login         Run headless hub OAuth login
+  hub login         Log in to the hub (browser by default; HUB_EMAIL for headless)
   hub status        Print hub auth + connectivity
   config show       Print the effective config (redacted)
   config migrate    Copy ~/.config/opzero-claude → ~/.config/opzero-code (non-destructive)
@@ -46,13 +45,31 @@ async function cmdSetup(): Promise<void> {
 }
 
 async function cmdHubLogin(): Promise<void> {
-  const { loginHeadless } = await import("../server/hub-auth");
-  const email = process.env.HUB_EMAIL ?? `opz-${hostname()}@opzero.local`;
-  const password = process.env.HUB_PASSWORD ?? randomBytes(18).toString("base64url");
+  const { login, loginHeadless, isHeadless } = await import("../server/hub-auth");
   const authkitUrl = process.env.AUTHKIT_URL ?? "https://auth.opzero.sh";
-  const result = await loginHeadless({ email, password, authkitUrl });
-  console.log(`[hub] logged in as ${result.email}`);
-  console.log(`[hub] password (save it): ${result.password}`);
+
+  // Headless / scripted: provision under the OWNER's account (HUB_EMAIL),
+  // never a synthetic per-host identity — it would be invisible in the hub.
+  if (isHeadless() || process.env.HUB_EMAIL) {
+    const email = process.env.HUB_EMAIL;
+    if (!email) {
+      console.error(
+        "headless: set HUB_EMAIL (and HUB_PASSWORD) to your OpZero account, or run this " +
+        "on a machine with a browser. A throwaway account never appears in your hub.",
+      );
+      process.exit(1);
+      return;
+    }
+    const password = process.env.HUB_PASSWORD ?? randomBytes(18).toString("base64url");
+    const result = await loginHeadless({ email, password, authkitUrl });
+    console.log(`[hub] logged in as ${result.email}`);
+    console.log(`[hub] password (save it): ${result.password}`);
+    return;
+  }
+
+  // Default: interactive browser login under the owner's account.
+  const auth = await login(authkitUrl);
+  console.log(`[hub] logged in${auth.email ? ` as ${auth.email}` : ""}`);
 }
 
 async function cmdHubStatus(): Promise<void> {
@@ -63,6 +80,7 @@ async function cmdHubStatus(): Promise<void> {
   } else {
     const exp = new Date(stored.expiresAt).toISOString();
     console.log(`[hub] auth file: ${AUTH_FILE_PATH}`);
+    console.log(`[hub] account:   ${stored.email ?? "(unknown — re-run 'codez hub login')"}`);
     console.log(`[hub] clientId:  ${stored.clientId}`);
     console.log(`[hub] expiresAt: ${exp}`);
   }
