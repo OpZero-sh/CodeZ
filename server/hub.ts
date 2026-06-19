@@ -15,7 +15,21 @@ import type { Config } from "./config";
 import { loadConfig, getConfigDir } from "./config";
 import { getAccessToken, createTokenRefresher, createAuthRecovery, readStoredAuth } from "./hub-auth";
 
-const DEFAULT_HUB_URL = "https://code.opzero.sh";
+const DEFAULT_HUB_URL = "https://code.opzero.sh/ws";
+
+// The machine agent connects to the Worker's `/ws` upgrade route, using the
+// configured hubUrl verbatim (it only appends query params). A bare-host value
+// — including the old DEFAULT_HUB_URL and any pre-existing config — would hit
+// `/` and fail the upgrade with "Expected 101". Guarantee the /ws path.
+function ensureWsPath(raw: string): string {
+  try {
+    const u = new URL(raw);
+    if (u.pathname === "" || u.pathname === "/") u.pathname = "/ws";
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
 
 export interface HubConfig {
   url: string;
@@ -59,6 +73,7 @@ export async function loadHubConfig(): Promise<HubConfig | null> {
     }
   }
   if (!url) url = DEFAULT_HUB_URL;
+  url = ensureWsPath(url);
 
   // Priority: env var > existing stored token > OAuth flow (only if already provisioned) > token file
   let token = process.env.CODEZ_HUB_TOKEN;
