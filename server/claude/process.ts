@@ -43,6 +43,44 @@ function isAuthError(text: string): boolean {
   return AUTH_ERROR_PATTERNS.some((p) => p.test(text));
 }
 
+// launchd / systemd hand the server a minimal PATH (/usr/bin:/bin:...) that
+// never sources the login shell, so an npm-global / bun / volta / nvm `claude`
+// is invisible and `Bun.spawn(["claude", ...])` dies with ENOENT. Resolve the
+// binary against an augmented search path once, and reuse the same augmented
+// PATH for the child env so anything `claude` shells out to also resolves.
+function augmentedPath(): string {
+  const home = process.env.HOME ?? "";
+  const extra = [
+    `${home}/.bun/bin`,
+    `${home}/.local/bin`,
+    `${home}/.claude/local`,
+    `${home}/.volta/bin`,
+    `${home}/.npm-global/bin`,
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+  ].filter((p) => home || !p.startsWith("/Users"));
+  const current = process.env.PATH ?? "";
+  return [current, ...extra].filter(Boolean).join(":");
+}
+
+let resolvedClaudeBin: string | null | undefined;
+function resolveClaudeBin(): string {
+  if (resolvedClaudeBin !== undefined) return resolvedClaudeBin ?? "claude";
+  const override = process.env.CLAUDE_BIN?.trim();
+  if (override) {
+    resolvedClaudeBin = override;
+    return override;
+  }
+  resolvedClaudeBin = Bun.which("claude", { PATH: augmentedPath() });
+  if (!resolvedClaudeBin) {
+    console.error(
+      "[process] 'claude' not found on PATH or known install dirs; " +
+        "set CLAUDE_BIN to its absolute path. Falling back to bare 'claude'.",
+    );
+  }
+  return resolvedClaudeBin ?? "claude";
+}
+
 let preferredAuthMode: AuthMode = "oauth";
 let lastAuthFailure: { mode: AuthMode; time: number; error: string } | null =
   null;
@@ -202,7 +240,7 @@ export class SessionProcess {
   private spawnChild(): void {
     const opts = this.opts;
     const args = [
-      "claude",
+      resolveClaudeBin(),
       "-p",
       "--input-format",
       "stream-json",
@@ -232,7 +270,8 @@ export class SessionProcess {
       args.push("--permission-mode", opts.permissionMode);
     }
 
-    const env = { ...process.env };
+    const env: Record<string, string | undefined> = { ...process.env };
+    env.PATH = augmentedPath();
     if (this.authMode === "oauth") {
       delete env.ANTHROPIC_API_KEY;
     } else if (this.savedApiKey) {
