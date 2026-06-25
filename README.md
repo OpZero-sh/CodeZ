@@ -6,6 +6,8 @@ as a PWA on iOS and Android via Add to Home Screen.
 Package name: `opzero-code`. Product name shown in the UI: **CodeZero**. On-disk
 config directory remains `~/.config/opzero-claude/` to preserve existing installs.
 
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/743de5f6-63bf-48f3-8ef8-215aa78f3031" />
+
 ## Quick start
 
 ```bash
